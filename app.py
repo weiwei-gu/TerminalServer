@@ -10,6 +10,7 @@ import select
 import subprocess
 import threading
 import secrets
+import argparse
 from flask import Flask, request, render_template, redirect, send_file, jsonify
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
@@ -177,6 +178,20 @@ def on_resize(d):
         except: pass
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Web Terminal Server - 网页终端服务',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+示例:
+  %(prog)s                  默认端口 5001 运行
+  %(prog)s --port 8080      指定端口 8080 运行
+
+默认账号: admin / admin123, user / password
+'''
+    )
+    parser.add_argument('--port', type=int, default=5001, help='服务端口 (默认: 5001)')
+    args = parser.parse_args()
+
     import socket as s
     ip = '127.0.0.1'
     try:
@@ -186,9 +201,9 @@ if __name__ == '__main__':
     print('='*50)
     print('Web Terminal')
     print('='*50)
-    print(f'Local:   http://localhost:5001')
-    print(f'Network: http://{ip}:5001')
+    print(f'Local:   http://localhost:{args.port}')
+    print(f'Network: http://{ip}:{args.port}')
     print('='*50)
     print('Users: admin / admin123')
     print('='*50)
-    socketio.run(app, host='0.0.0.0', port=5001, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=args.port, allow_unsafe_werkzeug=True)

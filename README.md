@@ -44,7 +44,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # 安装依赖
-pip install flask flask-socketio
+pip install -r requirements.txt
 ```
 
 ## 使用

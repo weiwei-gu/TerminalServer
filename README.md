@@ -93,6 +93,19 @@ python app.py
 - 禁止路径穿越（不允许 `..`）
 - 需要登录认证才能上传下载
 
+## 目录结构
+
+```
+TerminalServer/
+├── app.py              # Flask 主程序
+├── templates/
+│   └── index.html      # HTML 模板
+├── requirements.txt    # Python 依赖
+├── README.md           # 项目说明
+├── CLAUDE.md           # Claude Code 指导文件
+└── venv/               # Python 虚拟环境
+```
+
 ## 代码结构
 
 `app.py` 主要组件：

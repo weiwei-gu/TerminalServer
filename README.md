@@ -8,6 +8,7 @@
 - 支持交互式程序（vim、top 等）
 - 用户登录认证
 - 多用户会话管理
+- 文件上传下载
 
 ## 原理
 
@@ -66,14 +67,42 @@ python app.py
 | admin | admin123 |
 | user | password |
 
+## 文件上传下载
+
+### 上传
+
+点击"上传"按钮 → 输入目标路径 → 选择文件上传
+
+路径规则：
+- 以 `/` 结尾：视为目录，文件保存到该目录（保留原名）
+- 不以 `/` 结尾：视为完整路径，文件保存到指定路径
+
+示例：
+- `/tmp/` → 文件保存为 `/tmp/原文件名`
+- `/tmp/test.txt` → 文件保存为 `/tmp/test.txt`
+
+### 下载
+
+点击"下载"按钮 → 输入文件路径 → 下载文件
+
+示例：`/tmp/test.txt`
+
+### 安全限制
+
+- 上传文件大小限制：100MB
+- 禁止路径穿越（不允许 `..`）
+- 需要登录认证才能上传下载
+
 ## 代码结构
 
 `app.py` 主要组件：
 
 - `USERS` - 用户账号字典
-- `auth_tokens` - 登录 token 存储
-- `terminals` - 会话 PTY 进程管理
+- `tokens` - 登录 token 存储
+- `sessions` - 会话 PTY 进程管理
 - `/` 路由 - 登录页面和终端页面
-- `socketio.on('connect')` - 创建 PTY 进程
-- `socketio.on('cmd')` - 接收用户输入，写入 PTY
-- `read_output()` - 后台线程读取 PTY 输出，推送到前端
+- `/upload` 路由 - 文件上传
+- `/download` 路由 - 文件下载
+- `socketio.on('auth')` - 验证 token，创建 PTY 进程
+- `socketio.on('in')` - 接收用户输入，写入 PTY
+- `read_fd()` - 后台线程读取 PTY 输出，推送到前端

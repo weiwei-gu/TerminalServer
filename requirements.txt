@@ -3,3 +3,6 @@ flask-socketio
 
 # Build (optional)
 pyinstaller
+
+# Test (optional)
+pytest

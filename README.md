@@ -52,10 +52,10 @@ pip install -r requirements.txt
 
 ```bash
 source venv/bin/activate
-pyinstaller web-terminal.spec --clean
+pyinstaller web-terminal.spec --clean && rm -rf build/
 ```
 
-生成的二进制文件在 `dist/web-terminal`，可直接运行无需 Python 环境。
+生成 `dist/web-terminal`（约11MB），可直接运行无需 Python 环境。
 
 ## 使用
 

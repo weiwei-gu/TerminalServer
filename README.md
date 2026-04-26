@@ -119,10 +119,19 @@ TerminalServer/
 ├── app.py              # Flask 主程序
 ├── templates/
 │   └── index.html      # HTML 模板
+├── tests/
+│   └── test_app.py     # 测试代码
 ├── requirements.txt    # Python 依赖
 ├── README.md           # 项目说明
 ├── CLAUDE.md           # Claude Code 指导文件
 └── venv/               # Python 虚拟环境
+```
+
+## 测试
+
+```bash
+source venv/bin/activate
+pytest tests/ -v
 ```
 
 ## 代码结构

@@ -48,6 +48,15 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## 打包二进制
+
+```bash
+source venv/bin/activate
+pyinstaller web-terminal.spec --clean
+```
+
+生成的二进制文件在 `dist/web-terminal`，可直接运行无需 Python 环境。
+
 ## 使用
 
 ```bash

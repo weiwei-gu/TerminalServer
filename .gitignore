@@ -21,3 +21,7 @@ venv/
 
 # Claude
 .claude/
+
+# PyInstaller build
+build/
+dist/

@@ -60,14 +60,24 @@ pyinstaller web-terminal.spec --clean && rm -rf build/
 ## 使用
 
 ```bash
+# 源码运行
 source venv/bin/activate
 python app.py
+
+# 或使用二进制直接运行
+./dist/web-terminal
+
+# 指定端口
+./dist/web-terminal --port 8080
+
+# 查看帮助
+./dist/web-terminal --help
 ```
 
 启动后访问：
 
-- 本地：`http://localhost:5001`
-- 网络：`http://<本机IP>:5001`
+- 本地：`http://localhost:<端口>`
+- 网络：`http://<本机IP>:<端口>`
 
 默认账号：
 

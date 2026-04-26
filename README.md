@@ -1,0 +1,79 @@
+# Web Terminal Server
+
+网页终端服务 - 在浏览器中访问真实终端。
+
+## 功能
+
+- 浏览器远程终端访问
+- 支持交互式程序（vim、top 等）
+- 用户登录认证
+- 多用户会话管理
+
+## 原理
+
+```
+┌─────────────┐     WebSocket      ┌─────────────┐     PTY      ┌─────────────┐
+│   浏览器    │  ←──────────────→  │  Flask服务器 │ ←──────────→ │  Shell进程  │
+│  (前端UI)   │                    │ (app.py)    │             │  (zsh/bash) │
+└─────────────┘                    └─────────────┘             └─────────────┘
+```
+
+**核心流程：**
+
+1. **登录认证**：用户提交账号密码，服务器生成 token 并返回终端页面
+
+2. **WebSocket 连接**：前端通过 Socket.IO 与服务器建立实时双向通信
+
+3. **PTY 创建**：服务器使用 Python `pty` 模块创建伪终端，启动 shell 进程
+
+4. **数据流转**：
+   - 用户键盘输入 → WebSocket → 服务器写入 PTY → Shell 接收
+   - Shell 输出 → PTY → 服务器读取 → WebSocket → 浏览器显示
+
+**关键技术点：**
+
+- **PTY (伪终端)**：通过 `pty.openpty()` 创建主/从设备，shell 连接到从端，服务器读写主端
+- **非阻塞读取**：使用 `select` 监听 PTY 输出，避免阻塞主线程
+- **终端窗口大小**：通过 `fcntl.ioctl` 设置 `TIOCSWINSZ` 控制终端行列数
+
+## 安装
+
+```bash
+# 创建虚拟环境
+python3 -m venv venv
+source venv/bin/activate
+
+# 安装依赖
+pip install flask flask-socketio
+```
+
+## 使用
+
+```bash
+source venv/bin/activate
+python app.py
+```
+
+启动后访问：
+
+- 本地：`http://localhost:5001`
+- 网络：`http://<本机IP>:5001`
+
+默认账号：
+
+| 用户名 | 密码 |
+|-------|------|
+| admin | admin123 |
+| user | password |
+
+## 代码结构
+
+`app.py` 主要组件：
+
+- `USERS` - 用户账号字典
+- `auth_tokens` - 登录 token 存储
+- `terminals` - 会话 PTY 进程管理
+- `/` 路由 - 登录页面和终端页面
+- `socketio.on('connect')` - 创建 PTY 进程
+- `socketio.on('cmd')` - 接收用户输入，写入 PTY
+- `read_output()` - 后台线程读取 PTY 输出，推送到前端

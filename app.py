@@ -26,19 +26,19 @@ sessions = {}
 
 @app.route('/socket.io.min.js')
 def socketio_js():
-    return send_file('venv/socket.io.min.js')
+    return send_file('static/socket.io.min.js')
 
 @app.route('/xterm.min.js')
 def xterm_js():
-    return send_file('venv/xterm.min.js')
+    return send_file('static/xterm.min.js')
 
 @app.route('/xterm.css')
 def xterm_css():
-    return send_file('venv/xterm.css')
+    return send_file('static/xterm.css')
 
 @app.route('/fit.min.js')
 def fit_js():
-    return send_file('venv/fit.min.js')
+    return send_file('static/fit.min.js')
 
 def set_size(fd, r, c):
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", r, c, 0, 0))

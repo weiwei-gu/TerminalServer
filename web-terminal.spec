@@ -6,10 +6,10 @@ a = Analysis(
     binaries=[],
     datas=[
         ('templates', 'templates'),
-        ('venv/socket.io.min.js', 'venv'),
-        ('venv/xterm.min.js', 'venv'),
-        ('venv/xterm.css', 'venv'),
-        ('venv/fit.min.js', 'venv'),
+        ('static/socket.io.min.js', 'static'),
+        ('static/xterm.min.js', 'static'),
+        ('static/xterm.css', 'static'),
+        ('static/fit.min.js', 'static'),
     ],
     hiddenimports=[
         'flask', 'flask_socketio', 'werkzeug', 'werkzeug.utils',

@@ -67,7 +67,7 @@ class TestLogin:
         """测试登录成功"""
         rv = client.post('/', data={'u': 'admin', 'p': 'admin123'}, follow_redirects=True)
         assert rv.status_code == 200
-        assert 'Terminal - admin' in rv.data.decode()
+        assert '<small>· admin</small>' in rv.data.decode()
 
     def test_login_fail_wrong_password(self, client):
         """测试密码错误"""

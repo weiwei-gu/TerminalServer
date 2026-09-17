@@ -145,7 +145,7 @@ python app.py --chatgraph-work ~/myproject/chatgraphic/work \
 
 - 导图数据路由凭登录 cookie（HttpOnly）鉴权，与终端登录同生命周期
 - 数据目录为启动时解析的单一目录：多项目需换参数启动，跨项目聚合暂不支持
-- 导图面板为 ChatGraphic viewer 原生浅色主题，与终端黑绿风格不一致属已知取舍
+- 界面已整体对齐 ChatGraphic viewer 的浅色设计语言（顶栏 / 按钮 / 弹窗 / 浅色终端主题）；导图面板宽度可用分隔条左右拖拽调节，按浏览器记忆
 
 ## 工作目录初始化（--workspace）
 

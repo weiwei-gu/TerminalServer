@@ -126,11 +126,12 @@ def _bootstrap_workspace(ws, which=None, run=None):
 
 
 def _resolve_work_for_workspace(ws):
-    """workspace 模式下的导图数据目录：项目内 chatgraphic/work（clone 布局）优先，否则为扩展安装态 ~/.chatgraphic"""
+    """workspace 模式下的导图数据目录：项目内 chatgraphic/work（clone 布局）优先，
+    否则为项目级扩展数据目录 <ws>/.chatgraphic（与 chatgraphic/resolveWork 新规则一致）"""
     p = os.path.join(ws, 'chatgraphic', 'work')
     if os.path.isdir(p):
         return p
-    return os.path.join(os.path.expanduser('~'), '.chatgraphic')
+    return os.path.join(ws, '.chatgraphic')
 
 @app.route('/socket.io.min.js')
 def socketio_js():

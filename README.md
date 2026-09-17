@@ -164,11 +164,12 @@ python app.py --workspace ~/code/myproject
 
 初始化后只剩**一步人工确认**：在该项目里启动 Codely，执行一次 `/hooks trust-project`（Codely 的项目信任安全机制，不可也不应由脚本代做）。之后在网页终端里用 Codely 正常聊天，会话导图面板即实时生长。
 
-导图数据目录随 workspace 自动判定：项目内有 `chatgraphic/work`（clone 布局）则读它，否则读扩展安装态 `~/.chatgraphic`；显式 `--chatgraph-work` 参数或 `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` 环境变量始终优先。
+导图数据目录随 workspace 自动判定：项目内有 `chatgraphic/work`（clone 布局）则读它，否则读项目级扩展数据目录 `<workspace>/.chatgraphic`（ChatGraphic 规则：workspace 作用域扩展的数据随项目走）；显式 `--chatgraph-work` 参数或 `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` 环境变量始终优先。
 
 说明：
 
 - 初始化失败不影响终端功能，服务照常启动，原因见启动横幅
+- workspace 的导图数据写在 `<workspace>/.chatgraphic/`，建议在项目 `.gitignore` 加一行 `.chatgraphic/`；旧版项目级扩展的历史会话仍在 `~/.chatgraphic`（不自动迁移），需要时手动 `mv`
 - Codex / Claude Code 的 Hook 注册为用户级全局注册（各写各的配置文件），与项目目录无关，仍按其安装脚本手动执行
 
 ## 目录结构

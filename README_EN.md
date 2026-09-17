@@ -164,11 +164,12 @@ Executed automatically (idempotent, safe to re-run):
 
 One **manual step** remains: start Codely in that project and run `/hooks trust-project` once (Codely's project-trust security mechanism — deliberately not automated). After that, chat with Codely inside the web terminal and the map panel grows live.
 
-The map data directory is resolved per workspace: `<workspace>/chatgraphic/work` (clone layout) if present, otherwise the extension install state `~/.chatgraphic`; explicit `--chatgraph-work` / `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` always take precedence.
+The map data directory is resolved per workspace: `<workspace>/chatgraphic/work` (clone layout) if present, otherwise the project-level extension data directory `<workspace>/.chatgraphic` (ChatGraphic rule: workspace-scoped extension data lives with the project); explicit `--chatgraph-work` / `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` always take precedence.
 
 Notes:
 
 - Bootstrap failure does not block the terminal; the server still starts and the reason is printed in the startup banner
+- Map data for the workspace is written to `<workspace>/.chatgraphic/`; consider adding `.chatgraphic/` to the project's `.gitignore`. Sessions created before this rule (stored under `~/.chatgraphic`) are not migrated — `mv` manually if needed
 - Codex / Claude Code hook registration is user-level global (each writes its own config file) and unrelated to the project directory — still done manually via their install scripts
 
 ## Directory Structure

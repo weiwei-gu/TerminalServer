@@ -322,9 +322,9 @@ class TestWorkspace:
         (tmp_path / 'chatgraphic' / 'work').mkdir(parents=True)
         assert app_module._resolve_work_for_workspace(str(tmp_path)) == str(tmp_path / 'chatgraphic' / 'work')
 
-    def test_resolve_work_falls_back_to_home(self, tmp_path):
-        """workspace 无本地数据时落到扩展安装态 ~/.chatgraphic"""
-        expected = os.path.join(os.path.expanduser('~'), '.chatgraphic')
+    def test_resolve_work_falls_back_to_project_data(self, tmp_path):
+        """workspace 无本地 clone 数据时读到项目级扩展数据目录 <ws>/.chatgraphic"""
+        expected = os.path.join(str(tmp_path), '.chatgraphic')
         assert app_module._resolve_work_for_workspace(str(tmp_path)) == expected
 
     def test_bootstrap_missing_tool(self, tmp_path):

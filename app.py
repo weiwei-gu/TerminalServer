@@ -2,16 +2,20 @@
 """Web Terminal - 使用 xterm.js 渲染 ANSI"""
 
 import os
+import sys
 import pty
 import fcntl
 import struct
 import termios
 import select
+import shutil
 import subprocess
 import threading
 import secrets
 import argparse
-from flask import Flask, request, render_template, redirect, send_file, jsonify
+import json
+import re
+from flask import Flask, request, render_template, redirect, send_file, jsonify, make_response, Response
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 
@@ -23,6 +27,111 @@ socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 USERS = {'admin': 'admin123', 'user': 'password'}
 tokens = {}
 sessions = {}
+
+# ===== ChatGraphic 会话导图集成 =====
+# work 目录 = 含 sessions/ 与 current.json 的目录（与 chatgraphic/serve.js 同语义）。
+# 解析链：--chatgraph-work 参数 > CHATGRAPHIC_WORK 环境变量（直接使用）
+#        > CHATGRAPHIC_HOME 环境变量 → $CHATGRAPHIC_HOME/work（与 serve.js 一致）
+#        > 本文件同级 ../chatgraphic/work（组合仓库布局）
+#        > ~/.chatgraphic（扩展安装态）> None（功能禁用，前端隐藏开关）
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _resolve_chat_work(env=None):
+    env = env or os.environ
+    if env.get('CHATGRAPHIC_WORK'):
+        return env['CHATGRAPHIC_WORK']
+    if env.get('CHATGRAPHIC_HOME'):
+        return os.path.join(env['CHATGRAPHIC_HOME'], 'work')
+    p = os.path.join(_HERE, '..', 'chatgraphic', 'work')
+    if os.path.isdir(p):
+        return os.path.normpath(p)
+    p = os.path.join(os.path.expanduser('~'), '.chatgraphic')
+    if os.path.isdir(os.path.join(p, 'sessions')):
+        return p
+    return None
+
+
+def _resolve_chat_viewer(env=None):
+    env = env or os.environ
+    if env.get('CHATGRAPHIC_VIEWER'):
+        return env['CHATGRAPHIC_VIEWER']
+    p = os.path.join(_HERE, '..', 'chatgraphic', 'viewer.html')
+    if os.path.isfile(p):
+        return os.path.normpath(p)
+    return None
+
+
+CHATGRAPHIC_WORK = _resolve_chat_work()
+CHATGRAPHIC_VIEWER = _resolve_chat_viewer()
+
+# ===== 工作目录初始化（--workspace） =====
+WORKSPACE = None  # 指定项目目录：登录后终端落在此目录，启动时自动配置 Codely 环境
+CHATGRAPHIC_URL = 'https://github.com/weiwei-gu/ChatGraphic'
+_INSTALL_JS = os.path.join('.codely-cli', 'extensions', 'chatgraphic', 'chatgraphic', 'install.js')
+
+
+def _run_cmd(cmd, cwd, timeout=300):
+    """运行外部命令并收集输出，返回 (退出码, 输出文本)"""
+    try:
+        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+        return r.returncode, ((r.stdout or '') + (r.stderr or ''))
+    except subprocess.TimeoutExpired:
+        return 124, f'命令超时（>{timeout}s）：{" ".join(cmd)}'
+    except Exception as e:
+        return 1, str(e)
+
+
+def _clip_output(out, head=300, tail=300):
+    """压缩命令输出：过长时保头保尾，关键错误信息多在头部"""
+    s = (out or '').strip()
+    if len(s) <= head + tail + 8:
+        return s
+    return s[:head] + '\n…（中段略）…\n' + s[-tail:]
+
+
+def _bootstrap_workspace(ws, which=None, run=None):
+    """在指定目录配置 Codely + ChatGraphic 扩展环境（幂等，重复启动安全）：
+    1. 检查 codely / node 可用
+    2. 扩展未装时执行 codely extensions install --scope workspace --consent
+       （--consent 自动确认第三方扩展安装提示，否则无交互环境下静默跳过、实际不安装）
+    3. 执行扩展内 install.js 注册项目级 AfterAgent Hook
+    项目信任（/hooks trust-project）是 Codely 的安全机制，需在该项目会话里人工执行一次，不在此代做。
+    which / run 参数供测试注入。
+    """
+    which = which or shutil.which
+    run = run or _run_cmd
+    msgs = []
+    for tool in ('codely', 'node'):
+        if not which(tool):
+            return False, [f'未找到 {tool} 命令，请先安装']
+    install_js = os.path.join(ws, _INSTALL_JS)
+    if not os.path.isfile(install_js):
+        code, out = run(['codely', 'extensions', 'install', CHATGRAPHIC_URL,
+                         '--scope', 'workspace', '--consent'], cwd=ws)
+        if code != 0:
+            return False, [f'扩展安装失败（exit {code}）', _clip_output(out)]
+        if not os.path.isfile(os.path.join(ws, _INSTALL_JS)):
+            return False, ['扩展安装异常：命令成功但未出现 install.js，请手动执行上方命令排查',
+                           _clip_output(out)]
+        msgs.append('已安装 ChatGraphic 扩展（项目级，已用 --consent 自动确认安装提示）')
+    else:
+        msgs.append('ChatGraphic 扩展已存在，跳过安装')
+    code, out = run(['node', _INSTALL_JS], cwd=ws)
+    if code != 0:
+        return False, [f'Hook 注册失败（exit {code}）', _clip_output(out)]
+    msgs.append('已注册 AfterAgent Hook（项目级）')
+    msgs.append('首次在该项目使用 Codely 前需执行一次 /hooks trust-project')
+    return True, msgs
+
+
+def _resolve_work_for_workspace(ws):
+    """workspace 模式下的导图数据目录：项目内 chatgraphic/work（clone 布局）优先，
+    否则为项目级扩展数据目录 <ws>/.chatgraphic（与 chatgraphic/resolveWork 新规则一致）"""
+    p = os.path.join(ws, 'chatgraphic', 'work')
+    if os.path.isdir(p):
+        return p
+    return os.path.join(ws, '.chatgraphic')
 
 @app.route('/socket.io.min.js')
 def socketio_js():
@@ -60,15 +169,21 @@ def index():
         u, p = request.form.get('u'), request.form.get('p')
         if USERS.get(u) == p:
             tk = secrets.token_urlsafe(16)
-            tokens[tk] = {'user': u, 'cwd': os.environ.get('HOME', '/tmp')}
-            return render_template('index.html', token=tk, user=u, err='', cwd=tokens[tk]['cwd'])
+            tokens[tk] = {'user': u, 'cwd': WORKSPACE or os.environ.get('HOME', '/tmp')}
+            resp = make_response(render_template('index.html', token=tk, user=u, err='', cwd=tokens[tk]['cwd']))
+            # 会话导图等只读路由凭此 cookie 鉴权（iframe 及其内部 fetch 自动携带）
+            resp.set_cookie('wt', tk, httponly=True, samesite='Lax')
+            return resp
         return render_template('index.html', token='', user='', err='Invalid', cwd='')
     return render_template('index.html', token='', user='', err='', cwd='')
 
 @app.route('/logout')
 def logout():
-    tokens.pop(request.args.get('t', ''), None)
-    return redirect('/')
+    tk = request.args.get('t', '')
+    tokens.pop(tk, None)
+    resp = redirect('/')
+    resp.set_cookie('wt', '', expires=0)
+    return resp
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -125,6 +240,109 @@ def download():
         return send_file(path)
     except Exception as e:
         return f'下载失败: {e}', 500
+
+# ===== ChatGraphic 会话导图：只读数据路由（镜像 chatgraphic/serve.js，直接读磁盘，无需另跑 serve.js） =====
+_SESSION_RE = re.compile(r'^[A-Za-z0-9_\-]+$')
+_SESSION_FILES = {'graph.json': 'graph.json', 'transcript.json': 'transcript.json',
+                  'version': 'version.txt', 'status': 'status.json'}
+# viewer.html 缺失时的内建提示页（不中断终端功能）
+_MISSING_VIEWER_PAGE = """<!DOCTYPE html><html><head><meta charset="utf-8"><title>会话导图</title>
+<style>body{font-family:monospace;background:#000;color:#0f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+div{max-width:520px;padding:24px;border:2px solid #0f0;border-radius:8px;font-size:13px;line-height:1.8}</style></head>
+<body><div><b>未找到 viewer.html</b><br>导图数据已就绪，但渲染页面缺失。<br>
+请用 --chatgraph-viewer 参数或环境变量 CHATGRAPHIC_VIEWER 指向 ChatGraphic 的 viewer.html 路径后重启服务。</div></body></html>"""
+
+
+def _cookie_ok():
+    """导图路由鉴权：登录时种下的 wt cookie 必须有效"""
+    tk = request.cookies.get('wt')
+    return bool(tk and tk in tokens)
+
+
+def _chat_json(data, code=200):
+    resp = jsonify(data)
+    resp.status_code = code
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
+def _chat_file(path, fallback_body, err):
+    """读 work 目录下的文件；缺失时按 serve.js 语义回退（version/status 有兜底值，graph/transcript 报 503）"""
+    if os.path.isfile(path):
+        resp = send_file(path)
+        resp.headers['Cache-Control'] = 'no-store'
+        return resp
+    if fallback_body is not None:
+        return Response(fallback_body, status=200, content_type='text/plain; charset=utf-8')
+    return _chat_json({'error': err}, 503)
+
+
+def _list_sessions():
+    out = []
+    root = os.path.join(CHATGRAPHIC_WORK, 'sessions')
+    try:
+        for d in os.listdir(root):
+            try:
+                with open(os.path.join(root, d, 'graph.json'), encoding='utf-8') as f:
+                    g = json.load(f)
+                out.append({'sessionId': d, 'goal': g.get('goal'), 'version': g.get('version'),
+                            'roundCount': g.get('roundCount'), 'generatedAt': g.get('generatedAt')})
+            except Exception:
+                pass  # 无 graph.json 的目录跳过
+    except Exception:
+        pass  # sessions 目录不存在
+    out.sort(key=lambda s: str(s.get('generatedAt') or ''), reverse=True)
+    return out
+
+
+@app.route('/chatgraph/config')
+def chat_config():
+    if not _cookie_ok():
+        return _chat_json({'error': '未授权'}, 401)
+    return _chat_json({'enabled': bool(CHATGRAPHIC_WORK), 'viewer': bool(CHATGRAPHIC_VIEWER)})
+
+
+@app.route('/viewer')
+def chat_viewer():
+    if not _cookie_ok():
+        return _chat_json({'error': '未授权'}, 401)
+    if not CHATGRAPHIC_VIEWER or not os.path.isfile(CHATGRAPHIC_VIEWER):
+        return Response(_MISSING_VIEWER_PAGE, status=200, content_type='text/html; charset=utf-8')
+    resp = send_file(CHATGRAPHIC_VIEWER)
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
+@app.route('/sessions')
+def chat_sessions():
+    if not _cookie_ok():
+        return _chat_json({'error': '未授权'}, 401)
+    return _chat_json(_list_sessions())
+
+
+@app.route('/current')
+def chat_current():
+    if not _cookie_ok():
+        return _chat_json({'error': '未授权'}, 401)
+    sid = None
+    try:
+        with open(os.path.join(CHATGRAPHIC_WORK, 'current.json'), encoding='utf-8') as f:
+            sid = json.load(f).get('sessionId')
+    except Exception:
+        sid = None
+    return _chat_json({'sessionId': sid})
+
+
+@app.route('/session/<sid>/<name>')
+def chat_session_file(sid, name):
+    if not _cookie_ok():
+        return _chat_json({'error': '未授权'}, 401)
+    if not CHATGRAPHIC_WORK or not _SESSION_RE.match(sid) or name not in _SESSION_FILES:
+        return _chat_json({'error': '会话不存在'}, 404)
+    path = os.path.join(CHATGRAPHIC_WORK, 'sessions', sid, _SESSION_FILES[name])
+    # version/status 缺失给兜底值（与 serve.js 一致），graph/transcript 缺失 503
+    fallback = '0' if name == 'version' else '{}' if name == 'status' else None
+    return _chat_file(path, fallback, '尚未生成（先聊一轮或手动补跑）')
 
 @socketio.on('auth')
 def on_auth(tk):
@@ -185,12 +403,38 @@ if __name__ == '__main__':
 示例:
   %(prog)s                  默认端口 5001 运行
   %(prog)s --port 8080      指定端口 8080 运行
+  %(prog)s --workspace DIR  初始化项目目录（装 ChatGraphic 扩展 + 注册 Hook），终端落在该目录
 
 默认账号: admin / admin123, user / password
 '''
     )
     parser.add_argument('--port', type=int, default=5001, help='服务端口 (默认: 5001)')
+    parser.add_argument('--workspace', default=None,
+                        help='项目目录：登录后终端落在此目录，启动时自动安装 ChatGraphic 扩展并注册 Hook')
+    parser.add_argument('--chatgraph-work', default=None,
+                        help='ChatGraphic 数据目录（含 sessions/ 与 current.json），未指定按环境变量/默认链解析')
+    parser.add_argument('--chatgraph-viewer', default=None,
+                        help='ChatGraphic viewer.html 路径，未指定按环境变量/同级 chatgraphic/ 解析')
     args = parser.parse_args()
+
+    # 显式参数优先于模块导入时的自动解析
+    if args.chatgraph_work:
+        CHATGRAPHIC_WORK = args.chatgraph_work
+    if args.chatgraph_viewer:
+        CHATGRAPHIC_VIEWER = args.chatgraph_viewer
+
+    boot_ok, boot_msgs = None, []
+    if args.workspace:
+        ws = os.path.abspath(os.path.expanduser(args.workspace))
+        if not os.path.isdir(ws):
+            print(f'错误：--workspace 目录不存在：{ws}')
+            sys.exit(1)
+        WORKSPACE = ws
+        # workspace 模式的导图数据目录：显式参数/环境变量优先，其次项目内 clone 数据，最后扩展安装态
+        if not (args.chatgraph_work or os.environ.get('CHATGRAPHIC_WORK') or os.environ.get('CHATGRAPHIC_HOME')):
+            CHATGRAPHIC_WORK = _resolve_work_for_workspace(ws)
+        print(f'正在初始化工作目录：{ws}')
+        boot_ok, boot_msgs = _bootstrap_workspace(WORKSPACE)
 
     import socket as s
     ip = '127.0.0.1'
@@ -204,6 +448,12 @@ if __name__ == '__main__':
     print(f'Local:   http://localhost:{args.port}')
     print(f'Network: http://{ip}:{args.port}')
     print('='*50)
+    print('Workspace: ' + (WORKSPACE or '未指定（终端落在 $HOME）'))
+    if WORKSPACE:
+        print('初始化: ' + ('成功' if boot_ok else '失败（终端功能不受影响）'))
+        for m in boot_msgs:
+            print('  - ' + m)
+    print('Chat 导图: ' + (CHATGRAPHIC_WORK or '未检测到数据（--chatgraph-work 可指定）'))
     print('Users: admin / admin123')
     print('='*50)
     socketio.run(app, host='0.0.0.0', port=args.port, allow_unsafe_werkzeug=True)

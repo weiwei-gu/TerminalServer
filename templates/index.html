@@ -5,59 +5,79 @@
 <title>Web Terminal</title>
 <link rel="stylesheet" href="/xterm.css">
 <style>
+/* 对齐 ChatGraphic viewer 设计语言：浅色、蓝主色、毛玻璃顶栏 */
+:root{
+--blue:#2563EB;--blue-dark:#1D4ED8;--blue-tint:#EFF6FF;
+--ink:#0F172A;--ink-2:#475569;--muted:#64748B;--faint:#94A3B8;
+--line:#E7EDF5;--bg:#F6F8FB;--red:#DC2626;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:#000}
-.header{background:rgba(0,0,0,0.9);padding:8px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0f0;font-family:monospace}
-.header h1{font-size:14px;color:#0f0}
-.header .btn-group{display:flex;gap:8px}
-.header button{background:#000;color:#0f0;border:1px solid #0f0;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px}
-.header button:hover{background:#0f0;color:#000}
-#term{height:calc(100vh - 40px);background:#000}
-.login{display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;position:relative;overflow:hidden}
-#matrix-canvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
-.lb{background:rgba(0,0,0,0.8);padding:40px;border-radius:12px;border:2px solid #0f0;z-index:1}
-.lb h2{color:#0f0;margin-bottom:30px;text-align:center;font-family:monospace}
-.lb input[type=text],.lb input[type=password]{width:100%;padding:12px;margin-bottom:16px;border:1px solid #0f0;border-radius:6px;background:#000;color:#0f0;font-size:14px;font-family:monospace}
-.lb input:focus{outline:none;border-color:#0f0;box-shadow:0 0 10px #0f0}
-.lb button{width:100%;padding:12px;background:#0f0;color:#000;border:2px solid #0f0;border-radius:6px;cursor:pointer;font-size:16px;font-family:monospace;font-weight:bold}
-.lb button:hover{background:#000;color:#0f0}
-.err{color:#f00;font-size:12px;margin-bottom:16px;text-align:center;font-family:monospace}
-#download-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000}
-#download-modal .modal-box{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#000;padding:20px;border-radius:8px;border:2px solid #0f0}
-#download-modal input{width:300px;padding:10px;border:1px solid #0f0;border-radius:4px;background:#000;color:#0f0;font-size:14px;margin-bottom:10px;font-family:monospace}
-#download-modal input:focus{outline:none;box-shadow:0 0 10px #0f0}
-#download-modal .modal-btns{display:flex;gap:10px}
-#download-modal button{padding:8px 16px;border-radius:4px;cursor:pointer;font-family:monospace}
-#download-modal .ok{background:#0f0;color:#000;border:1px solid #0f0}
-#download-modal .cancel{background:#000;color:#0f0;border:1px solid #0f0}
-#upload-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000}
-#upload-modal .modal-box{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#000;padding:20px;border-radius:8px;border:2px solid #0f0;text-align:center}
-#upload-modal input{width:300px;padding:10px;border:1px solid #0f0;border-radius:4px;background:#000;color:#0f0;font-size:14px;margin-bottom:10px;font-family:monospace}
-#upload-modal input:focus{outline:none;box-shadow:0 0 10px #0f0}
-#upload-modal .modal-btns{display:flex;gap:10px;justify-content:center}
-#upload-modal button{padding:8px 16px;border-radius:4px;cursor:pointer;font-family:monospace}
-#upload-modal .ok{background:#0f0;color:#000;border:1px solid #0f0}
-#upload-modal .cancel{background:#000;color:#0f0;border:1px solid #0f0}
-#help-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000}
-#help-modal .modal-box{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#000;padding:20px;border-radius:8px;border:2px solid #0f0;width:500px;max-height:80vh;overflow-y:auto}
-#help-modal h3{color:#0f0;margin-bottom:15px;font-size:16px;font-family:monospace}
-#help-modal .close-x{position:absolute;top:10px;right:10px;color:#0f0;font-size:18px;cursor:pointer;font-family:sans-serif}
-#help-modal .close-x:hover{color:#fff}
+html,body{height:100%}
+body{
+font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+/* ===== 顶栏（同 viewer .top） ===== */
+.header{position:fixed;top:0;left:0;right:0;height:52px;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:0 16px;gap:14px}
+.logo{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:800;color:var(--ink);min-width:0}
+.logo-mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 3px 8px rgba(37,99,235,.3);font-family:ui-monospace,Menlo,monospace;flex:none}
+.logo small{font-weight:500;color:var(--faint);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-group{display:flex;gap:8px}
+.header button{font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:9px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink-2);white-space:nowrap;font-family:inherit}
+.header button:hover{border-color:#C9D7EA;color:var(--ink)}
+.header button.active{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.25)}
+/* ===== 主区：终端 + 可拖拽分隔条 + 导图面板 ===== */
+#main{display:flex;height:calc(100vh - 52px);margin-top:52px}
+#term{flex:1;min-width:220px;background:#fff}
+#splitter{display:none;flex:none;width:7px;cursor:col-resize;background:transparent;position:relative}
+#splitter.open{display:block}
+#splitter::after{content:"";position:absolute;top:50%;left:2px;width:3px;height:40px;border-radius:2px;background:#C9D7EA;transform:translateY(-50%)}
+#splitter:hover::after,#splitter.drag::after{background:var(--blue)}
+#splitter.drag{background:var(--blue-tint)}
+#graph-panel{display:none;flex:none;width:46%;min-width:320px;background:var(--bg)}
+#graph-panel.open{display:block}
+#graph-panel iframe{width:100%;height:100%;border:0;display:block}
+/* ===== 登录页（白色卡片） ===== */
+.login{display:flex;justify-content:center;align-items:center;height:100vh}
+.lb{background:#fff;border:1px solid var(--line);border-radius:16px;padding:40px 36px;width:360px;box-shadow:0 12px 32px rgba(15,23,42,.08)}
+.lb h2{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:28px;font-size:17px;color:var(--ink)}
+.lb input[type=text],.lb input[type=password]{width:100%;padding:12px 14px;margin-bottom:14px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit;outline:none}
+.lb input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.15);background:#fff}
+.lb button{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14.5px;font-weight:700;font-family:inherit;box-shadow:0 4px 12px rgba(37,99,235,.25)}
+.lb button:hover{background:var(--blue-dark)}
+.err{color:var(--red);font-size:12.5px;margin-bottom:14px;text-align:center}
+/* ===== 弹窗（上传/下载/帮助） ===== */
+#download-modal,#upload-modal,#help-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,.45);z-index:1000}
+.modal-box{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:0 12px 32px rgba(15,23,42,.14)}
+#download-modal .modal-box,#upload-modal .modal-box{text-align:center}
+#download-modal input,#upload-modal input{width:300px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:13.5px;margin-bottom:14px;font-family:inherit;outline:none}
+#download-modal input:focus,#upload-modal input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.15);background:#fff}
+.modal-btns{display:flex;gap:10px;justify-content:center}
+.modal-box button{padding:8px 16px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit}
+.modal-box .ok{background:var(--blue);color:#fff;border:1px solid var(--blue)}
+.modal-box .ok:hover{background:var(--blue-dark)}
+.modal-box .cancel{background:#fff;color:var(--ink-2);border:1px solid var(--line)}
+.modal-box .cancel:hover{border-color:#C9D7EA;color:var(--ink)}
+#help-modal .modal-box{width:500px;max-height:80vh;overflow-y:auto}
+#help-modal h3{color:var(--ink);margin-bottom:15px;font-size:16px}
+#help-modal .close-x{position:absolute;top:10px;right:12px;color:var(--faint);font-size:18px;cursor:pointer;background:none;border:none;font-family:inherit}
+#help-modal .close-x:hover{color:var(--ink)}
 #help-modal .cmd-section{margin-bottom:15px}
-#help-modal .cmd-title{color:#0f0;font-size:13px;margin-bottom:8px;font-family:monospace}
-#help-modal table{width:100%;border-collapse:collapse;font-size:12px;font-family:monospace}
-#help-modal td{padding:4px 8px;border-bottom:1px solid #0f0}
-#help-modal td:first-child{color:#0f0;width:120px}
-#help-modal td:last-child{color:#0f0}
-#help-modal .close-btn{width:100%;margin-top:15px;padding:8px;background:#0f0;color:#000;border:1px solid #0f0;border-radius:4px;cursor:pointer;font-family:monospace}
+#help-modal .cmd-title{color:var(--blue-dark);font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+#help-modal table{width:100%;border-collapse:collapse;font-size:12.5px}
+#help-modal td{padding:5px 8px;border-bottom:1px solid var(--line);color:var(--ink-2)}
+#help-modal td:first-child{color:var(--blue-dark);width:150px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+#help-modal .close-btn{width:100%;margin-top:15px;padding:8px;background:var(--blue);color:#fff;border:1px solid var(--blue);border-radius:9px;cursor:pointer;font-weight:600;font-family:inherit}
+#help-modal .close-btn:hover{background:var(--blue-dark)}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#D7E0EC;border-radius:4px}
 </style>
 </head>
 <body>
 {% if not token %}
 <div class="login">
-<canvas id="matrix-canvas"></canvas>
 <div class="lb">
-<h2>Web Terminal</h2>
+<h2><span class="logo-mark">❯</span> Web Terminal</h2>
 {% if err %}<p class="err">{{ err }}</p>{% endif %}
 <form method="post">
 <input type="text" name="u" placeholder="Username" required autofocus>
@@ -66,47 +86,15 @@ html,body{height:100%;background:#000}
 </form>
 </div>
 </div>
-<script>
-(function(){
-var c=document.getElementById('matrix-canvas');
-var ctx=c.getContext('2d');
-c.width=window.innerWidth;
-c.height=window.innerHeight;
-var chars='01';
-var fontSize=14;
-var columns=c.width/fontSize;
-var drops=[];
-for(var i=0;i<columns;i++)drops[i]=Math.random()*c.height/fontSize;
-function draw(){
-ctx.fillStyle='rgba(0,0,0,0.05)';
-ctx.fillRect(0,0,c.width,c.height);
-ctx.fillStyle='#0f0';
-ctx.font=fontSize+'px monospace';
-for(var i=0;i<drops.length;i++){
-var text=chars[Math.floor(Math.random()*chars.length)];
-ctx.fillText(text,i*fontSize,drops[i]*fontSize);
-if(drops[i]*fontSize>c.height&&Math.random()>0.975)drops[i]=0;
-drops[i]++;
-}
-}
-setInterval(draw,33);
-window.addEventListener('resize',function(){
-c.width=window.innerWidth;
-c.height=window.innerHeight;
-columns=c.width/fontSize;
-drops=[];
-for(var i=0;i<columns;i++)drops[i]=Math.random()*c.height/fontSize;
-});
-})();
-</script>
 {% else %}
 <div class="header">
-<h1>Terminal - {{ user }}</h1>
+<div class="logo"><span class="logo-mark">❯</span> Terminal<small>· {{ user }}</small></div>
 <div class="btn-group">
 <input type="file" id="upload-input" hidden onchange="doUpload()">
 <button onclick="showUploadModal()">上传</button>
 <button onclick="showDownloadModal()">下载</button>
 <button onclick="showHelpModal()">帮助</button>
+<button id="chat-btn" onclick="toggleGraph()" hidden>会话导图</button>
 <button onclick="location.href='/logout?t={{ token }}'">退出</button>
 </div>
 </div>
@@ -198,17 +186,31 @@ for(var i=0;i<columns;i++)drops[i]=Math.random()*c.height/fontSize;
 <button class="close-btn" onclick="hideHelpModal()">关闭</button>
 </div>
 </div>
+<div id="main">
 <div id="term"></div>
+<div id="splitter" title="拖动调整导图面板宽度"></div>
+<div id="graph-panel"><iframe id="graph-frame" title="会话导图"></iframe></div>
+</div>
 <script src="/socket.io.min.js"></script>
 <script src="/xterm.min.js"></script>
+<script src="/fit.min.js"></script>
 <script>
 var token="{{ token }}";
 var cwd="{{ cwd }}";
 var sk=io();
-var term=new Terminal({cursorBlink:true,fontSize:14,fontFamily:'monospace',cols:100,rows:30});
+/* 浅色终端主题：色板按浅底适配（黑→墨色、白→灰、亮白→墨色） */
+var term=new Terminal({cursorBlink:true,fontSize:14,fontFamily:'ui-monospace,Menlo,monospace',cols:100,rows:30,
+theme:{background:'#FFFFFF',foreground:'#0F172A',cursor:'#2563EB',cursorAccent:'#FFFFFF',selectionBackground:'#BFDBFE',
+black:'#0F172A',red:'#DC2626',green:'#16A34A',yellow:'#D97706',blue:'#2563EB',magenta:'#9333EA',cyan:'#0891B2',white:'#64748B',
+brightBlack:'#475569',brightRed:'#B91C1C',brightGreen:'#15803D',brightYellow:'#B45309',brightBlue:'#1D4ED8',brightMagenta:'#7C3AED',brightCyan:'#0E7490',brightWhite:'#0F172A'}});
+var fitAddon=new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
 term.open(document.getElementById('term'));
+fitAddon.fit();
 term.onData(function(d){sk.emit('in',d)});
+term.onResize(function(){sk.emit('resize',{rows:term.rows,cols:term.cols})});
 sk.on('connect',function(){sk.emit('auth',token)});
+sk.on('ready',function(){sk.emit('resize',{rows:term.rows,cols:term.cols})});
 sk.on('out',function(d){term.write(d)});
 sk.on('err',function(m){term.write('\r\nError: '+m+'\r\n')});
 sk.on('dis',function(){term.write('\r\nDisconnected\r\n')});
@@ -243,6 +245,52 @@ a.href='/download?token='+token+'&path='+encodeURIComponent(p);
 a.download=p.split('/').pop();
 a.click();
 }
+/* ===== 会话导图开关 ===== */
+var graphOpen=false;
+var splitter=document.getElementById('splitter');
+var graphPanel=document.getElementById('graph-panel');
+function toggleGraph(){
+graphOpen=!graphOpen;
+graphPanel.classList.toggle('open',graphOpen);
+splitter.classList.toggle('open',graphOpen);
+document.getElementById('chat-btn').classList.toggle('active',graphOpen);
+if(graphOpen&&!document.getElementById('graph-frame').src){
+document.getElementById('graph-frame').src='/viewer?embed=1'; /* 内嵌模式：侧栏抽屉化，节点详情/会话按需唤出 */
+}
+fitAddon.fit(); /* 面板开合后同步终端列数到 PTY */
+}
+/* ===== 面板宽度拖拽（左右拉动，宽度记忆） ===== */
+function setPanelWidth(w){
+w=Math.max(320,Math.min(w,window.innerWidth-246)); /* 右侧留出终端最小宽 */
+graphPanel.style.width=w+'px';
+}
+(function(){var s=parseInt(localStorage.getItem('graph-panel-w')||'0',10);if(s>=320)setPanelWidth(s)})();
+var dragInfo=null;
+splitter.addEventListener('pointerdown',function(e){
+e.preventDefault();
+splitter.setPointerCapture(e.pointerId); /* 捕获后经过 iframe 也能持续收到拖动事件 */
+splitter.classList.add('drag');
+dragInfo={x:e.clientX,w:graphPanel.getBoundingClientRect().width};
+});
+splitter.addEventListener('pointermove',function(e){
+if(!dragInfo)return;
+setPanelWidth(dragInfo.w+(dragInfo.x-e.clientX)); /* 面板在右：向左拖变宽 */
+fitAddon.fit();
+});
+splitter.addEventListener('pointerup',function(){
+if(!dragInfo)return;
+dragInfo=null;
+splitter.classList.remove('drag');
+localStorage.setItem('graph-panel-w',String(Math.round(graphPanel.getBoundingClientRect().width)));
+fitAddon.fit();
+});
+window.addEventListener('resize',function(){
+if(graphOpen)setPanelWidth(graphPanel.getBoundingClientRect().width); /* 窗口变化后重新钳制 */
+fitAddon.fit();
+});
+fetch('/chatgraph/config').then(function(r){return r.status===401?null:r.json()}).then(function(c){
+if(c&&c.enabled)document.getElementById('chat-btn').hidden=false;
+}).catch(function(){});
 </script>
 {% endif %}
 </body>

@@ -9,6 +9,7 @@
 - 用户登录认证
 - 多用户会话管理
 - 文件上传下载
+- 会话导图（ChatGraphic 集成）：终端页一键展开 AI 会话导图，随对话实时生长
 
 ## 原理
 
@@ -112,6 +113,65 @@ python app.py
 - 禁止路径穿越（不允许 `..`）
 - 需要登录认证才能上传下载
 
+## 会话导图（ChatGraphic 集成）
+
+与 [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic) 组合使用：终端页工具栏出现「会话导图」开关，点开即在右侧展开导图面板（2 秒轮询实时生长、左栏可切会话、可导出 PNG / Markdown），终端自动缩窄；再点恢复全宽。在网页终端里用 Codely / Codex CLI / Claude Code 聊天（需已注册 ChatGraphic Hook），每轮结束后导图自动更新——**无需另跑 `serve.js`**，本服务直接读取磁盘上的数据目录。
+
+### 数据目录解析
+
+| 优先级 | 来源 |
+|---|---|
+| 1 | `--chatgraph-work` 参数（含 `sessions/` 与 `current.json` 的目录） |
+| 2 | 环境变量 `CHATGRAPHIC_WORK` |
+| 3 | 环境变量 `CHATGRAPHIC_HOME` → `$CHATGRAPHIC_HOME/work`（与 chatgraphic/serve.js 一致） |
+| 4 | 本文件同级 `../chatgraphic/work`（ChatGraphic 组合仓库布局，组合克隆时默认即用） |
+| 5 | `~/.chatgraphic`（Codely 扩展安装态） |
+| 都没有 | 功能自动禁用，开关隐藏 |
+
+viewer.html 渲染页路径：`--chatgraph-viewer` 参数 / 环境变量 `CHATGRAPHIC_VIEWER` > 同级 `../chatgraphic/viewer.html`；均缺失时面板显示内建提示页。
+
+### 示例
+
+```bash
+# 组合仓库（TerminalServer 与 chatgraphic/ 同级）直接运行即自动发现
+python app.py
+
+# 独立部署 / 二进制运行时显式指定
+python app.py --chatgraph-work ~/myproject/chatgraphic/work \
+              --chatgraph-viewer ~/myproject/chatgraphic/viewer.html
+```
+
+### 说明与限制
+
+- 导图数据路由凭登录 cookie（HttpOnly）鉴权，与终端登录同生命周期
+- 数据目录为启动时解析的单一目录：多项目需换参数启动，跨项目聚合暂不支持
+- 界面已整体对齐 ChatGraphic viewer 的浅色设计语言（顶栏 / 按钮 / 弹窗 / 浅色终端主题）；导图面板宽度可用分隔条左右拖拽调节，按浏览器记忆
+- 面板内嵌 viewer 的 `?embed=1` 模式：侧栏（会话列表 / 节点详情）抽屉化、画布全宽，会话抽屉默认展开，点节点自动弹出详情，点画布空白只收起详情（会话保持）——窄面板下也不丢功能
+
+## 工作目录初始化（--workspace）
+
+运行时用 `--workspace` 指定一个项目目录，服务启动时自动完成该目录的 Codely 环境配置，登录后终端直接落在该目录：
+
+```bash
+python app.py --workspace ~/code/myproject
+```
+
+自动执行（幂等，重复启动安全）：
+
+1. 检查 `codely` / `node` 命令可用
+2. 该目录未装扩展时执行 `codely extensions install https://github.com/weiwei-gu/ChatGraphic --scope workspace --consent`（装入 `<目录>/.codely-cli/extensions/`；`--consent` 为自动化自动确认第三方扩展安装提示——无交互环境下不带此参数会被静默跳过、实际不安装）
+3. 执行扩展内 `install.js` 注册项目级 AfterAgent Hook
+
+初始化后只剩**一步人工确认**：在该项目里启动 Codely，执行一次 `/hooks trust-project`（Codely 的项目信任安全机制，不可也不应由脚本代做）。之后在网页终端里用 Codely 正常聊天，会话导图面板即实时生长。
+
+导图数据目录随 workspace 自动判定：项目内有 `chatgraphic/work`（clone 布局）则读它，否则读项目级扩展数据目录 `<workspace>/.chatgraphic`（ChatGraphic 规则：workspace 作用域扩展的数据随项目走）；显式 `--chatgraph-work` 参数或 `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` 环境变量始终优先。
+
+说明：
+
+- 初始化失败不影响终端功能，服务照常启动，原因见启动横幅
+- workspace 的导图数据写在 `<workspace>/.chatgraphic/`，建议在项目 `.gitignore` 加一行 `.chatgraphic/`；旧版项目级扩展的历史会话仍在 `~/.chatgraphic`（不自动迁移），需要时手动 `mv`
+- Codex / Claude Code 的 Hook 注册为用户级全局注册（各写各的配置文件），与项目目录无关，仍按其安装脚本手动执行
+
 ## 目录结构
 
 ```
@@ -144,6 +204,7 @@ pytest tests/ -v
 - `/` 路由 - 登录页面和终端页面
 - `/upload` 路由 - 文件上传
 - `/download` 路由 - 文件下载
+- `/chatgraph/config` `/viewer` `/sessions` `/current` `/session/<sid>/...` 路由 - ChatGraphic 会话导图只读数据（凭 cookie 鉴权）
 - `socketio.on('auth')` - 验证 token，创建 PTY 进程
 - `socketio.on('in')` - 接收用户输入，写入 PTY
 - `read_fd()` - 后台线程读取 PTY 输出，推送到前端

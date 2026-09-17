@@ -37,3 +37,5 @@ Python venv 环境：
 - 认证：简单 token 机制
 - 通信：Socket.IO 双向传输终端 I/O
 - PTY：使用 Python pty 模块创建伪终端
+- 会话导图：Flask 直接读磁盘上的 ChatGraphic work 目录（默认 `../chatgraphic/work`，`--chatgraph-work` / `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` 可覆盖），`/viewer` + `/sessions` 等只读路由凭登录 cookie 鉴权；终端页「会话导图」开关经 iframe 展开面板，FitAddon 随面板开合与分隔条拖动同步终端尺寸；界面为 viewer 同款浅色设计语言
+- 工作目录初始化：`--workspace <dir>` 启动时自动 `codely extensions install --scope workspace` + 扩展内 `install.js` 注册项目级 Hook（幂等），终端落在该目录；项目信任 `/hooks trust-project` 需人工执行一次，不自动代做

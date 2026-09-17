@@ -9,6 +9,7 @@ Web-based terminal service - Access a real terminal from your browser.
 - User authentication
 - Multi-user session management
 - File upload and download
+- Chat map (ChatGraphic integration): expand a live AI session map from the terminal page with one toggle
 
 ## Architecture
 
@@ -112,6 +113,40 @@ Example: `/tmp/test.txt`
 - Path traversal forbidden (`..` not allowed)
 - Login required for upload/download
 
+## Chat Map (ChatGraphic Integration)
+
+Use together with [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic): a "Chat Map" toggle appears in the terminal toolbar. Click it to expand a graph panel on the right (live refresh every 2s, session switching, PNG/Markdown export) while the terminal auto-shrinks; click again to restore full width. Chat with Codely / Codex CLI / Claude Code inside the web terminal (with ChatGraphic hooks registered) and the map updates automatically after each turn — **no need to run `serve.js` separately**, this service reads the data directory on disk directly.
+
+### Data Directory Resolution
+
+| Priority | Source |
+|---|---|
+| 1 | `--chatgraph-work` argument (directory containing `sessions/` and `current.json`) |
+| 2 | `CHATGRAPHIC_WORK` environment variable |
+| 3 | `CHATGRAPHIC_HOME` environment variable → `$CHATGRAPHIC_HOME/work` (same as chatgraphic/serve.js) |
+| 4 | `../chatgraphic/work` relative to app.py (combined ChatGraphic repo layout; the default when cloned together) |
+| 5 | `~/.chatgraphic` (Codely extension install state) |
+| None found | Feature auto-disabled, toggle hidden |
+
+viewer.html render page path: `--chatgraph-viewer` argument / `CHATGRAPHIC_VIEWER` environment variable > sibling `../chatgraphic/viewer.html`; when missing the panel shows a built-in hint page.
+
+### Examples
+
+```bash
+# Combined repo (TerminalServer sits next to chatgraphic/): auto-discovered, just run
+python app.py
+
+# Standalone deployment / binary: specify explicitly
+python app.py --chatgraph-work ~/myproject/chatgraphic/work \
+              --chatgraph-viewer ~/myproject/chatgraphic/viewer.html
+```
+
+### Notes and Limitations
+
+- Chat map routes are authenticated via the login cookie (HttpOnly), same lifetime as the terminal login
+- The data directory is a single directory resolved at startup: switch via arguments for multiple projects; cross-project aggregation is not supported yet
+- The map panel uses ChatGraphic viewer's native light theme; the mismatch with the terminal's green-on-black theme is a known trade-off
+
 ## Directory Structure
 
 ```
@@ -145,6 +180,7 @@ Main components in `app.py`:
 - `/` route - Login page and terminal page
 - `/upload` route - File upload
 - `/download` route - File download
+- `/chatgraph/config`, `/viewer`, `/sessions`, `/current`, `/session/<sid>/...` routes - ChatGraphic read-only map data (cookie-authenticated)
 - `socketio.on('auth')` - Validate token, create PTY process
 - `socketio.on('in')` - Receive user input, write to PTY
 - `read_fd()` - Background thread reading PTY output, pushing to frontend

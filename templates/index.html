@@ -12,7 +12,12 @@ html,body{height:100%;background:#000}
 .header .btn-group{display:flex;gap:8px}
 .header button{background:#000;color:#0f0;border:1px solid #0f0;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px}
 .header button:hover{background:#0f0;color:#000}
-#term{height:calc(100vh - 40px);background:#000}
+.header button.active{background:#0f0;color:#000}
+#main{display:flex;background:#000}
+#term{flex:1;min-width:0;height:calc(100vh - 40px);background:#000}
+#graph-panel{display:none;width:46%;min-width:320px;height:calc(100vh - 40px);border-left:2px solid #0f0;background:#F6F8FB}
+#graph-panel.open{display:block}
+#graph-panel iframe{width:100%;height:100%;border:0;display:block}
 .login{display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;position:relative;overflow:hidden}
 #matrix-canvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
 .lb{background:rgba(0,0,0,0.8);padding:40px;border-radius:12px;border:2px solid #0f0;z-index:1}
@@ -107,6 +112,7 @@ for(var i=0;i<columns;i++)drops[i]=Math.random()*c.height/fontSize;
 <button onclick="showUploadModal()">上传</button>
 <button onclick="showDownloadModal()">下载</button>
 <button onclick="showHelpModal()">帮助</button>
+<button id="chat-btn" onclick="toggleGraph()" hidden>会话导图</button>
 <button onclick="location.href='/logout?t={{ token }}'">退出</button>
 </div>
 </div>
@@ -198,17 +204,27 @@ for(var i=0;i<columns;i++)drops[i]=Math.random()*c.height/fontSize;
 <button class="close-btn" onclick="hideHelpModal()">关闭</button>
 </div>
 </div>
+<div id="main">
 <div id="term"></div>
+<div id="graph-panel"><iframe id="graph-frame" title="会话导图"></iframe></div>
+</div>
 <script src="/socket.io.min.js"></script>
 <script src="/xterm.min.js"></script>
+<script src="/fit.min.js"></script>
 <script>
 var token="{{ token }}";
 var cwd="{{ cwd }}";
 var sk=io();
 var term=new Terminal({cursorBlink:true,fontSize:14,fontFamily:'monospace',cols:100,rows:30});
+var fitAddon=new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
 term.open(document.getElementById('term'));
+fitAddon.fit();
 term.onData(function(d){sk.emit('in',d)});
+term.onResize(function(){sk.emit('resize',{rows:term.rows,cols:term.cols})});
+window.addEventListener('resize',function(){fitAddon.fit()});
 sk.on('connect',function(){sk.emit('auth',token)});
+sk.on('ready',function(){sk.emit('resize',{rows:term.rows,cols:term.cols})});
 sk.on('out',function(d){term.write(d)});
 sk.on('err',function(m){term.write('\r\nError: '+m+'\r\n')});
 sk.on('dis',function(){term.write('\r\nDisconnected\r\n')});
@@ -243,6 +259,20 @@ a.href='/download?token='+token+'&path='+encodeURIComponent(p);
 a.download=p.split('/').pop();
 a.click();
 }
+/* ===== 会话导图开关 ===== */
+var graphOpen=false;
+function toggleGraph(){
+graphOpen=!graphOpen;
+document.getElementById('graph-panel').classList.toggle('open',graphOpen);
+document.getElementById('chat-btn').classList.toggle('active',graphOpen);
+if(graphOpen&&!document.getElementById('graph-frame').src){
+document.getElementById('graph-frame').src='/viewer'; /* 首次打开才加载 */
+}
+fitAddon.fit(); /* 面板开合后同步终端列数到 PTY */
+}
+fetch('/chatgraph/config').then(function(r){return r.status===401?null:r.json()}).then(function(c){
+if(c&&c.enabled)document.getElementById('chat-btn').hidden=false;
+}).catch(function(){});
 </script>
 {% endif %}
 </body>

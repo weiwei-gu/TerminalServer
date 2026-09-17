@@ -9,6 +9,7 @@
 - 用户登录认证
 - 多用户会话管理
 - 文件上传下载
+- 会话导图（ChatGraphic 集成）：终端页一键展开 AI 会话导图，随对话实时生长
 
 ## 原理
 
@@ -112,6 +113,40 @@ python app.py
 - 禁止路径穿越（不允许 `..`）
 - 需要登录认证才能上传下载
 
+## 会话导图（ChatGraphic 集成）
+
+与 [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic) 组合使用：终端页工具栏出现「会话导图」开关，点开即在右侧展开导图面板（2 秒轮询实时生长、左栏可切会话、可导出 PNG / Markdown），终端自动缩窄；再点恢复全宽。在网页终端里用 Codely / Codex CLI / Claude Code 聊天（需已注册 ChatGraphic Hook），每轮结束后导图自动更新——**无需另跑 `serve.js`**，本服务直接读取磁盘上的数据目录。
+
+### 数据目录解析
+
+| 优先级 | 来源 |
+|---|---|
+| 1 | `--chatgraph-work` 参数（含 `sessions/` 与 `current.json` 的目录） |
+| 2 | 环境变量 `CHATGRAPHIC_WORK` |
+| 3 | 环境变量 `CHATGRAPHIC_HOME` → `$CHATGRAPHIC_HOME/work`（与 chatgraphic/serve.js 一致） |
+| 4 | 本文件同级 `../chatgraphic/work`（ChatGraphic 组合仓库布局，组合克隆时默认即用） |
+| 5 | `~/.chatgraphic`（Codely 扩展安装态） |
+| 都没有 | 功能自动禁用，开关隐藏 |
+
+viewer.html 渲染页路径：`--chatgraph-viewer` 参数 / 环境变量 `CHATGRAPHIC_VIEWER` > 同级 `../chatgraphic/viewer.html`；均缺失时面板显示内建提示页。
+
+### 示例
+
+```bash
+# 组合仓库（TerminalServer 与 chatgraphic/ 同级）直接运行即自动发现
+python app.py
+
+# 独立部署 / 二进制运行时显式指定
+python app.py --chatgraph-work ~/myproject/chatgraphic/work \
+              --chatgraph-viewer ~/myproject/chatgraphic/viewer.html
+```
+
+### 说明与限制
+
+- 导图数据路由凭登录 cookie（HttpOnly）鉴权，与终端登录同生命周期
+- 数据目录为启动时解析的单一目录：多项目需换参数启动，跨项目聚合暂不支持
+- 导图面板为 ChatGraphic viewer 原生浅色主题，与终端黑绿风格不一致属已知取舍
+
 ## 目录结构
 
 ```
@@ -144,6 +179,7 @@ pytest tests/ -v
 - `/` 路由 - 登录页面和终端页面
 - `/upload` 路由 - 文件上传
 - `/download` 路由 - 文件下载
+- `/chatgraph/config` `/viewer` `/sessions` `/current` `/session/<sid>/...` 路由 - ChatGraphic 会话导图只读数据（凭 cookie 鉴权）
 - `socketio.on('auth')` - 验证 token，创建 PTY 进程
 - `socketio.on('in')` - 接收用户输入，写入 PTY
 - `read_fd()` - 后台线程读取 PTY 输出，推送到前端

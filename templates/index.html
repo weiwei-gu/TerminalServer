@@ -255,7 +255,7 @@ graphPanel.classList.toggle('open',graphOpen);
 splitter.classList.toggle('open',graphOpen);
 document.getElementById('chat-btn').classList.toggle('active',graphOpen);
 if(graphOpen&&!document.getElementById('graph-frame').src){
-document.getElementById('graph-frame').src='/viewer'; /* 首次打开才加载 */
+document.getElementById('graph-frame').src='/viewer?embed=1'; /* 内嵌模式：侧栏抽屉化，节点详情/会话按需唤出 */
 }
 fitAddon.fit(); /* 面板开合后同步终端列数到 PTY */
 }

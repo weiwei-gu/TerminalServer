@@ -146,6 +146,7 @@ python app.py --chatgraph-work ~/myproject/chatgraphic/work \
 - Chat map routes are authenticated via the login cookie (HttpOnly), same lifetime as the terminal login
 - The data directory is a single directory resolved at startup: switch via arguments for multiple projects; cross-project aggregation is not supported yet
 - The UI now follows ChatGraphic viewer's light design language (top bar / buttons / modals / light terminal theme); the map panel width is adjustable by dragging the splitter and remembered per browser
+- The panel embeds the viewer in `?embed=1` mode: sidebars (sessions / node details) become on-demand drawers over a full-width canvas — clicking a node opens its details, clicking empty canvas dismisses them, so nothing is lost in a narrow panel
 
 ## Workspace Bootstrap (--workspace)
 

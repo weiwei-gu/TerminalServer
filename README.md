@@ -147,6 +147,29 @@ python app.py --chatgraph-work ~/myproject/chatgraphic/work \
 - 数据目录为启动时解析的单一目录：多项目需换参数启动，跨项目聚合暂不支持
 - 导图面板为 ChatGraphic viewer 原生浅色主题，与终端黑绿风格不一致属已知取舍
 
+## 工作目录初始化（--workspace）
+
+运行时用 `--workspace` 指定一个项目目录，服务启动时自动完成该目录的 Codely 环境配置，登录后终端直接落在该目录：
+
+```bash
+python app.py --workspace ~/code/myproject
+```
+
+自动执行（幂等，重复启动安全）：
+
+1. 检查 `codely` / `node` 命令可用
+2. 该目录未装扩展时执行 `codely extensions install https://github.com/weiwei-gu/ChatGraphic --scope workspace --consent`（装入 `<目录>/.codely-cli/extensions/`；`--consent` 为自动化自动确认第三方扩展安装提示——无交互环境下不带此参数会被静默跳过、实际不安装）
+3. 执行扩展内 `install.js` 注册项目级 AfterAgent Hook
+
+初始化后只剩**一步人工确认**：在该项目里启动 Codely，执行一次 `/hooks trust-project`（Codely 的项目信任安全机制，不可也不应由脚本代做）。之后在网页终端里用 Codely 正常聊天，会话导图面板即实时生长。
+
+导图数据目录随 workspace 自动判定：项目内有 `chatgraphic/work`（clone 布局）则读它，否则读扩展安装态 `~/.chatgraphic`；显式 `--chatgraph-work` 参数或 `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` 环境变量始终优先。
+
+说明：
+
+- 初始化失败不影响终端功能，服务照常启动，原因见启动横幅
+- Codex / Claude Code 的 Hook 注册为用户级全局注册（各写各的配置文件），与项目目录无关，仍按其安装脚本手动执行
+
 ## 目录结构
 
 ```

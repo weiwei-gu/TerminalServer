@@ -147,6 +147,29 @@ python app.py --chatgraph-work ~/myproject/chatgraphic/work \
 - The data directory is a single directory resolved at startup: switch via arguments for multiple projects; cross-project aggregation is not supported yet
 - The map panel uses ChatGraphic viewer's native light theme; the mismatch with the terminal's green-on-black theme is a known trade-off
 
+## Workspace Bootstrap (--workspace)
+
+Pass `--workspace <dir>` at startup to auto-configure the Codely environment for that project directory; the terminal opens directly in it after login:
+
+```bash
+python app.py --workspace ~/code/myproject
+```
+
+Executed automatically (idempotent, safe to re-run):
+
+1. Check that `codely` / `node` are available
+2. If the extension is not installed yet, run `codely extensions install https://github.com/weiwei-gu/ChatGraphic --scope workspace --consent` (installs into `<dir>/.codely-cli/extensions/`; `--consent` auto-acknowledges the third-party extension prompt — without it, a non-interactive environment silently skips the install)
+3. Run the extension's `install.js` to register the project-level AfterAgent hook
+
+One **manual step** remains: start Codely in that project and run `/hooks trust-project` once (Codely's project-trust security mechanism — deliberately not automated). After that, chat with Codely inside the web terminal and the map panel grows live.
+
+The map data directory is resolved per workspace: `<workspace>/chatgraphic/work` (clone layout) if present, otherwise the extension install state `~/.chatgraphic`; explicit `--chatgraph-work` / `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` always take precedence.
+
+Notes:
+
+- Bootstrap failure does not block the terminal; the server still starts and the reason is printed in the startup banner
+- Codex / Claude Code hook registration is user-level global (each writes its own config file) and unrelated to the project directory — still done manually via their install scripts
+
 ## Directory Structure
 
 ```

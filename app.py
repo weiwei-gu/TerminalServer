@@ -2,11 +2,13 @@
 """Web Terminal - 使用 xterm.js 渲染 ANSI"""
 
 import os
+import sys
 import pty
 import fcntl
 import struct
 import termios
 import select
+import shutil
 import subprocess
 import threading
 import secrets
@@ -63,6 +65,73 @@ def _resolve_chat_viewer(env=None):
 CHATGRAPHIC_WORK = _resolve_chat_work()
 CHATGRAPHIC_VIEWER = _resolve_chat_viewer()
 
+# ===== 工作目录初始化（--workspace） =====
+WORKSPACE = None  # 指定项目目录：登录后终端落在此目录，启动时自动配置 Codely 环境
+CHATGRAPHIC_URL = 'https://github.com/weiwei-gu/ChatGraphic'
+_INSTALL_JS = os.path.join('.codely-cli', 'extensions', 'chatgraphic', 'chatgraphic', 'install.js')
+
+
+def _run_cmd(cmd, cwd, timeout=300):
+    """运行外部命令并收集输出，返回 (退出码, 输出文本)"""
+    try:
+        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+        return r.returncode, ((r.stdout or '') + (r.stderr or ''))
+    except subprocess.TimeoutExpired:
+        return 124, f'命令超时（>{timeout}s）：{" ".join(cmd)}'
+    except Exception as e:
+        return 1, str(e)
+
+
+def _clip_output(out, head=300, tail=300):
+    """压缩命令输出：过长时保头保尾，关键错误信息多在头部"""
+    s = (out or '').strip()
+    if len(s) <= head + tail + 8:
+        return s
+    return s[:head] + '\n…（中段略）…\n' + s[-tail:]
+
+
+def _bootstrap_workspace(ws, which=None, run=None):
+    """在指定目录配置 Codely + ChatGraphic 扩展环境（幂等，重复启动安全）：
+    1. 检查 codely / node 可用
+    2. 扩展未装时执行 codely extensions install --scope workspace --consent
+       （--consent 自动确认第三方扩展安装提示，否则无交互环境下静默跳过、实际不安装）
+    3. 执行扩展内 install.js 注册项目级 AfterAgent Hook
+    项目信任（/hooks trust-project）是 Codely 的安全机制，需在该项目会话里人工执行一次，不在此代做。
+    which / run 参数供测试注入。
+    """
+    which = which or shutil.which
+    run = run or _run_cmd
+    msgs = []
+    for tool in ('codely', 'node'):
+        if not which(tool):
+            return False, [f'未找到 {tool} 命令，请先安装']
+    install_js = os.path.join(ws, _INSTALL_JS)
+    if not os.path.isfile(install_js):
+        code, out = run(['codely', 'extensions', 'install', CHATGRAPHIC_URL,
+                         '--scope', 'workspace', '--consent'], cwd=ws)
+        if code != 0:
+            return False, [f'扩展安装失败（exit {code}）', _clip_output(out)]
+        if not os.path.isfile(os.path.join(ws, _INSTALL_JS)):
+            return False, ['扩展安装异常：命令成功但未出现 install.js，请手动执行上方命令排查',
+                           _clip_output(out)]
+        msgs.append('已安装 ChatGraphic 扩展（项目级，已用 --consent 自动确认安装提示）')
+    else:
+        msgs.append('ChatGraphic 扩展已存在，跳过安装')
+    code, out = run(['node', _INSTALL_JS], cwd=ws)
+    if code != 0:
+        return False, [f'Hook 注册失败（exit {code}）', _clip_output(out)]
+    msgs.append('已注册 AfterAgent Hook（项目级）')
+    msgs.append('首次在该项目使用 Codely 前需执行一次 /hooks trust-project')
+    return True, msgs
+
+
+def _resolve_work_for_workspace(ws):
+    """workspace 模式下的导图数据目录：项目内 chatgraphic/work（clone 布局）优先，否则为扩展安装态 ~/.chatgraphic"""
+    p = os.path.join(ws, 'chatgraphic', 'work')
+    if os.path.isdir(p):
+        return p
+    return os.path.join(os.path.expanduser('~'), '.chatgraphic')
+
 @app.route('/socket.io.min.js')
 def socketio_js():
     return send_file('static/socket.io.min.js')
@@ -99,7 +168,7 @@ def index():
         u, p = request.form.get('u'), request.form.get('p')
         if USERS.get(u) == p:
             tk = secrets.token_urlsafe(16)
-            tokens[tk] = {'user': u, 'cwd': os.environ.get('HOME', '/tmp')}
+            tokens[tk] = {'user': u, 'cwd': WORKSPACE or os.environ.get('HOME', '/tmp')}
             resp = make_response(render_template('index.html', token=tk, user=u, err='', cwd=tokens[tk]['cwd']))
             # 会话导图等只读路由凭此 cookie 鉴权（iframe 及其内部 fetch 自动携带）
             resp.set_cookie('wt', tk, httponly=True, samesite='Lax')
@@ -333,11 +402,14 @@ if __name__ == '__main__':
 示例:
   %(prog)s                  默认端口 5001 运行
   %(prog)s --port 8080      指定端口 8080 运行
+  %(prog)s --workspace DIR  初始化项目目录（装 ChatGraphic 扩展 + 注册 Hook），终端落在该目录
 
 默认账号: admin / admin123, user / password
 '''
     )
     parser.add_argument('--port', type=int, default=5001, help='服务端口 (默认: 5001)')
+    parser.add_argument('--workspace', default=None,
+                        help='项目目录：登录后终端落在此目录，启动时自动安装 ChatGraphic 扩展并注册 Hook')
     parser.add_argument('--chatgraph-work', default=None,
                         help='ChatGraphic 数据目录（含 sessions/ 与 current.json），未指定按环境变量/默认链解析')
     parser.add_argument('--chatgraph-viewer', default=None,
@@ -349,6 +421,19 @@ if __name__ == '__main__':
         CHATGRAPHIC_WORK = args.chatgraph_work
     if args.chatgraph_viewer:
         CHATGRAPHIC_VIEWER = args.chatgraph_viewer
+
+    boot_ok, boot_msgs = None, []
+    if args.workspace:
+        ws = os.path.abspath(os.path.expanduser(args.workspace))
+        if not os.path.isdir(ws):
+            print(f'错误：--workspace 目录不存在：{ws}')
+            sys.exit(1)
+        WORKSPACE = ws
+        # workspace 模式的导图数据目录：显式参数/环境变量优先，其次项目内 clone 数据，最后扩展安装态
+        if not (args.chatgraph_work or os.environ.get('CHATGRAPHIC_WORK') or os.environ.get('CHATGRAPHIC_HOME')):
+            CHATGRAPHIC_WORK = _resolve_work_for_workspace(ws)
+        print(f'正在初始化工作目录：{ws}')
+        boot_ok, boot_msgs = _bootstrap_workspace(WORKSPACE)
 
     import socket as s
     ip = '127.0.0.1'
@@ -362,6 +447,11 @@ if __name__ == '__main__':
     print(f'Local:   http://localhost:{args.port}')
     print(f'Network: http://{ip}:{args.port}')
     print('='*50)
+    print('Workspace: ' + (WORKSPACE or '未指定（终端落在 $HOME）'))
+    if WORKSPACE:
+        print('初始化: ' + ('成功' if boot_ok else '失败（终端功能不受影响）'))
+        for m in boot_msgs:
+            print('  - ' + m)
     print('Chat 导图: ' + (CHATGRAPHIC_WORK or '未检测到数据（--chatgraph-work 可指定）'))
     print('Users: admin / admin123')
     print('='*50)

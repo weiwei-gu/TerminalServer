@@ -305,3 +305,83 @@ class TestChatGraphRoutes:
         rv = logged_in.get('/viewer')
         assert rv.status_code == 200
         assert 'viewer.html' in rv.get_data(as_text=True)
+
+
+class TestWorkspace:
+    """--workspace 工作目录初始化测试"""
+
+    def test_login_cwd_is_workspace(self, client, tmp_path, monkeypatch):
+        """测试指定 workspace 后登录终端落在该目录"""
+        monkeypatch.setattr(app_module, 'WORKSPACE', str(tmp_path))
+        rv = client.post('/', data={'u': 'admin', 'p': 'admin123'})
+        assert rv.status_code == 200
+        assert f'var cwd="{tmp_path}"' in rv.data.decode()
+
+    def test_resolve_work_prefers_local_clone(self, tmp_path):
+        """workspace 内有 chatgraphic/work（clone 布局）时优先读它"""
+        (tmp_path / 'chatgraphic' / 'work').mkdir(parents=True)
+        assert app_module._resolve_work_for_workspace(str(tmp_path)) == str(tmp_path / 'chatgraphic' / 'work')
+
+    def test_resolve_work_falls_back_to_home(self, tmp_path):
+        """workspace 无本地数据时落到扩展安装态 ~/.chatgraphic"""
+        expected = os.path.join(os.path.expanduser('~'), '.chatgraphic')
+        assert app_module._resolve_work_for_workspace(str(tmp_path)) == expected
+
+    def test_bootstrap_missing_tool(self, tmp_path):
+        """codely/node 未安装时报错并中止"""
+        ok, msgs = app_module._bootstrap_workspace(str(tmp_path), which=lambda t: None)
+        assert ok is False
+        assert 'codely' in msgs[0]
+
+    def test_bootstrap_installs_then_registers(self, tmp_path):
+        """全新目录：先扩展安装（--consent 非交互确认）、再 Hook 注册，命令都落在 workspace 执行"""
+        calls = []
+
+        def fake_run(cmd, cwd=None):
+            calls.append((list(cmd), cwd))
+            if cmd[0] == 'codely':  # 模拟安装成功：落出 install.js
+                install_js = tmp_path / '.codely-cli' / 'extensions' / 'chatgraphic' / 'chatgraphic' / 'install.js'
+                install_js.parent.mkdir(parents=True)
+                install_js.write_text('')
+            return 0, ''
+
+        ok, msgs = app_module._bootstrap_workspace(str(tmp_path), which=lambda t: '/usr/bin/' + t, run=fake_run)
+        assert ok is True
+        assert len(calls) == 2
+        assert calls[0][0] == ['codely', 'extensions', 'install', app_module.CHATGRAPHIC_URL,
+                               '--scope', 'workspace', '--consent']
+        assert calls[1][0] == ['node', '.codely-cli/extensions/chatgraphic/chatgraphic/install.js']
+        assert all(cwd == str(tmp_path) for _, cwd in calls)
+
+    def test_bootstrap_install_silent_failure(self, tmp_path):
+        """安装命令成功但未落盘（如交互确认被跳过）时报错并带出输出"""
+        ok, msgs = app_module._bootstrap_workspace(str(tmp_path), which=lambda t: '/usr/bin/' + t,
+                                                   run=lambda cmd, cwd=None: (0, '看起来成功了'))
+        assert ok is False
+        assert any('扩展安装异常' in m for m in msgs)
+        assert any('看起来成功了' in m for m in msgs)
+
+    def test_bootstrap_skips_existing_extension(self, tmp_path):
+        """扩展已存在（install.js 在位）时跳过安装只注册 Hook"""
+        install_js = tmp_path / '.codely-cli' / 'extensions' / 'chatgraphic' / 'chatgraphic' / 'install.js'
+        install_js.parent.mkdir(parents=True)
+        install_js.write_text('')
+        calls = []
+
+        def fake_run(cmd, cwd=None):
+            calls.append((list(cmd), cwd))
+            return 0, ''
+
+        ok, msgs = app_module._bootstrap_workspace(str(tmp_path), which=lambda t: '/usr/bin/' + t, run=fake_run)
+        assert ok is True
+        assert len(calls) == 1
+        assert calls[0][0][0] == 'node'
+        assert any('跳过安装' in m for m in msgs)
+
+    def test_bootstrap_install_failure(self, tmp_path):
+        """扩展安装失败时中止并带出命令输出"""
+        ok, msgs = app_module._bootstrap_workspace(str(tmp_path), which=lambda t: '/usr/bin/' + t,
+                                                   run=lambda cmd, cwd=None: (1, 'boom'))
+        assert ok is False
+        assert any('扩展安装失败' in m for m in msgs)
+        assert any('boom' in m for m in msgs)

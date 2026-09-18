@@ -9,7 +9,7 @@ Web-based terminal service - Access a real terminal from your browser.
 - User authentication
 - Multi-user session management
 - File upload and download
-- Chat map (ChatGraphic integration): expand a live AI session map from the terminal page with one toggle
+- Chat map (ChatGraphic integration): dashboard + floating windows — terminal and map are independently draggable and resizable, growing live with the conversation
 
 ## Architecture
 
@@ -115,7 +115,7 @@ Example: `/tmp/test.txt`
 
 ## Chat Map (ChatGraphic Integration)
 
-Use together with [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic): a "Chat Map" toggle appears in the terminal toolbar. Click it to expand a graph panel on the right (live refresh every 2s, session switching, PNG/Markdown export) while the terminal auto-shrinks; click again to restore full width. Chat with Codely / Codex CLI / Claude Code inside the web terminal (with ChatGraphic hooks registered) and the map updates automatically after each turn — **no need to run `serve.js` separately**, this service reads the data directory on disk directly.
+Use together with [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic): after login you land on a **workspace dashboard** (the background page — session list, map readiness, launch cards for terminal and map). The terminal and the chat map are **independent floating windows**: drag by the title bar, resize from the bottom-right corner, click to focus, close and recall from the bottom dock; window geometry is remembered per browser. The map window embeds the viewer in embed mode (sessions drawer open by default, click a node for details); clicking a session card on the dashboard **pins that session** in the map window (`?session=` deep link). Chat with Codely / Codex CLI / Claude Code inside the terminal window (with ChatGraphic hooks registered) and the map updates automatically after each turn — **no need to run `serve.js` separately**, this service reads the data directory on disk directly.
 
 ### Data Directory Resolution
 
@@ -145,8 +145,8 @@ python app.py --chatgraph-work ~/myproject/chatgraphic/work \
 
 - Chat map routes are authenticated via the login cookie (HttpOnly), same lifetime as the terminal login
 - The data directory is a single directory resolved at startup: switch via arguments for multiple projects; cross-project aggregation is not supported yet
-- The UI now follows ChatGraphic viewer's light design language (top bar / buttons / modals / light terminal theme); the map panel width is adjustable by dragging the splitter and remembered per browser
-- The panel embeds the viewer in `?embed=1` mode: sidebars (sessions / node details) become drawers over a full-width canvas — the sessions drawer is open by default, clicking a node pops the details drawer, and clicking empty canvas dismisses only the details drawer (sessions stay)
+- The UI now follows ChatGraphic viewer's light design language (top bar / buttons / modals / light terminal theme); terminal and map are independent floating windows — draggable, corner-resizable, click-to-focus, geometry remembered per browser
+- The map window embeds the viewer in `?embed=1` mode: sidebars (sessions / node details) become drawers over a full-width canvas — the sessions drawer is open by default, clicking a node pops the details drawer, and clicking empty canvas dismisses only the details drawer (sessions stay) — nothing is lost even in a small window
 
 ## Workspace Bootstrap (--workspace)
 

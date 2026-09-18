@@ -67,6 +67,7 @@ CHATGRAPHIC_VIEWER = _resolve_chat_viewer()
 
 # ===== 工作目录初始化（--workspace） =====
 WORKSPACE = None  # 指定项目目录：登录后终端落在此目录，启动时自动配置 Codely 环境
+AUTH_ENABLED = False  # 默认免登录（自动签发本地会话）；--auth 启用账号登录
 CHATGRAPHIC_URL = 'https://github.com/weiwei-gu/ChatGraphic'
 _INSTALL_JS = os.path.join('.codely-cli', 'extensions', 'chatgraphic', 'chatgraphic', 'install.js')
 
@@ -163,19 +164,32 @@ def read_fd(fd, sid):
         except:
             break
 
+def _issue_session(user, cwd):
+    """签发会话 token、种 cookie 并渲染应用页（免登录与登录成功共用）"""
+    tk = secrets.token_urlsafe(16)
+    tokens[tk] = {'user': user, 'cwd': cwd}
+    resp = make_response(render_template('index.html', token=tk, user=user, err='', cwd=cwd, auth_on=AUTH_ENABLED))
+    # 会话导图等只读路由凭此 cookie 鉴权（iframe 及其内部 fetch 自动携带）
+    resp.set_cookie('wt', tk, httponly=True, samesite='Lax')
+    return resp
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    if request.method == 'POST':
-        u, p = request.form.get('u'), request.form.get('p')
-        if USERS.get(u) == p:
-            tk = secrets.token_urlsafe(16)
-            tokens[tk] = {'user': u, 'cwd': WORKSPACE or os.environ.get('HOME', '/tmp')}
-            resp = make_response(render_template('index.html', token=tk, user=u, err='', cwd=tokens[tk]['cwd']))
-            # 会话导图等只读路由凭此 cookie 鉴权（iframe 及其内部 fetch 自动携带）
-            resp.set_cookie('wt', tk, httponly=True, samesite='Lax')
-            return resp
-        return render_template('index.html', token='', user='', err='Invalid', cwd='')
-    return render_template('index.html', token='', user='', err='', cwd='')
+    home = WORKSPACE or os.environ.get('HOME', '/tmp')
+    if AUTH_ENABLED:
+        if request.method == 'POST':
+            u, p = request.form.get('u'), request.form.get('p')
+            if USERS.get(u) == p:
+                return _issue_session(u, home)
+            return render_template('index.html', token='', user='', err='Invalid', cwd='', auth_on=True)
+        return render_template('index.html', token='', user='', err='', cwd='', auth_on=True)
+    # 默认免登录：已有有效会话 cookie 则复用，否则自动签发匿名会话直接进入工作台
+    tk = request.cookies.get('wt')
+    if tk and tk in tokens:
+        return render_template('index.html', token=tk, user=tokens[tk]['user'], err='',
+                                cwd=tokens[tk]['cwd'], auth_on=False)
+    return _issue_session('local', home)
 
 @app.route('/logout')
 def logout():
@@ -254,7 +268,9 @@ div{max-width:520px;padding:24px;border:2px solid #0f0;border-radius:8px;font-si
 
 
 def _cookie_ok():
-    """导图路由鉴权：登录时种下的 wt cookie 必须有效"""
+    """导图路由鉴权：--auth 模式校验登录 cookie；默认免登录直接放行"""
+    if not AUTH_ENABLED:
+        return True
     tk = request.cookies.get('wt')
     return bool(tk and tk in tokens)
 
@@ -278,6 +294,8 @@ def _chat_file(path, fallback_body, err):
 
 
 def _list_sessions():
+    if not CHATGRAPHIC_WORK:
+        return []  # 未检测到导图数据（如独立部署）：会话列表为空，不报错
     out = []
     root = os.path.join(CHATGRAPHIC_WORK, 'sessions')
     try:
@@ -409,6 +427,7 @@ if __name__ == '__main__':
 '''
     )
     parser.add_argument('--port', type=int, default=5001, help='服务端口 (默认: 5001)')
+    parser.add_argument('--auth', action='store_true', help='启用账号登录（默认免登录）')
     parser.add_argument('--workspace', default=None,
                         help='项目目录：登录后终端落在此目录，启动时自动安装 ChatGraphic 扩展并注册 Hook')
     parser.add_argument('--chatgraph-work', default=None,
@@ -418,6 +437,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # 显式参数优先于模块导入时的自动解析
+    if args.auth:
+        AUTH_ENABLED = True
     if args.chatgraph_work:
         CHATGRAPHIC_WORK = args.chatgraph_work
     if args.chatgraph_viewer:
@@ -443,7 +464,7 @@ if __name__ == '__main__':
             if not ifs.startswith('127.'): ip = ifs; break
     except: pass
     print('='*50)
-    print('Web Terminal')
+    print('ChatDeck')
     print('='*50)
     print(f'Local:   http://localhost:{args.port}')
     print(f'Network: http://{ip}:{args.port}')
@@ -454,6 +475,7 @@ if __name__ == '__main__':
         for m in boot_msgs:
             print('  - ' + m)
     print('Chat 导图: ' + (CHATGRAPHIC_WORK or '未检测到数据（--chatgraph-work 可指定）'))
-    print('Users: admin / admin123')
+    print('Auth: ' + ('已启用 · 默认账号 admin / admin123, user / password' if AUTH_ENABLED
+                      else '免登录（--auth 可启用）· 局域网内任何设备可直接访问，请确保网络可信'))
     print('='*50)
     socketio.run(app, host='0.0.0.0', port=args.port, allow_unsafe_werkzeug=True)

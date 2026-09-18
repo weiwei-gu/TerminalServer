@@ -2,10 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Web Terminal</title>
+<title>ChatDeck</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%233B82F6'/%3E%3Crect x='9' y='3' width='12' height='9.5' rx='2' stroke='white' stroke-width='1.6' fill='none'/%3E%3Ccircle cx='12.5' cy='6.5' r='1' fill='white'/%3E%3Ccircle cx='17.5' cy='9' r='1' fill='white'/%3E%3Cpath d='M13.4 7 l3 1.6' stroke='white' stroke-width='1' stroke-linecap='round'/%3E%3Crect x='3' y='11' width='12' height='9.5' rx='2' stroke='white' stroke-width='1.6' fill='none'/%3E%3Cpath d='M6 14.5 l2.4 2 -2.4 2' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Cpath d='M10 18.5 h2.6' stroke='white' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/xterm.css">
 <style>
-/* 对齐 ChatGraphic viewer 设计语言：浅色、蓝主色、毛玻璃顶栏 */
+/* 对齐 ChatGraphic viewer 设计语言：浅色、蓝主色、毛玻璃 */
 :root{
 --blue:#2563EB;--blue-dark:#1D4ED8;--blue-tint:#EFF6FF;
 --ink:#0F172A;--ink-2:#475569;--muted:#64748B;--faint:#94A3B8;
@@ -17,26 +18,56 @@ body{
 font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
 color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;
 }
-/* ===== 顶栏（同 viewer .top） ===== */
-.header{position:fixed;top:0;left:0;right:0;height:52px;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:0 16px;gap:14px}
+/* ===== 工作台顶栏 ===== */
+.header{position:fixed;top:0;left:0;right:0;height:52px;z-index:500;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:0 16px;gap:14px}
 .logo{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:800;color:var(--ink);min-width:0}
 .logo-mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 3px 8px rgba(37,99,235,.3);font-family:ui-monospace,Menlo,monospace;flex:none}
 .logo small{font-weight:500;color:var(--faint);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn-group{display:flex;gap:8px}
 .header button{font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:9px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink-2);white-space:nowrap;font-family:inherit}
 .header button:hover{border-color:#C9D7EA;color:var(--ink)}
-.header button.active{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.25)}
-/* ===== 主区：终端 + 可拖拽分隔条 + 导图面板 ===== */
-#main{display:flex;height:calc(100vh - 52px);margin-top:52px}
-#term{flex:1;min-width:220px;background:#fff}
-#splitter{display:none;flex:none;width:7px;cursor:col-resize;background:transparent;position:relative}
-#splitter.open{display:block}
-#splitter::after{content:"";position:absolute;top:50%;left:2px;width:3px;height:40px;border-radius:2px;background:#C9D7EA;transform:translateY(-50%)}
-#splitter:hover::after,#splitter.drag::after{background:var(--blue)}
-#splitter.drag{background:var(--blue-tint)}
-#graph-panel{display:none;flex:none;width:46%;min-width:320px;background:var(--bg)}
-#graph-panel.open{display:block}
-#graph-panel iframe{width:100%;height:100%;border:0;display:block}
+/* ===== 工作台（背景页） ===== */
+#desktop{position:fixed;inset:0;overflow-y:auto;background:var(--bg)}
+.board{max-width:1040px;margin:0 auto;padding:80px 24px 130px}
+.board-hero{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.board-hero h2{font-size:22px;font-weight:800}
+.board-hero .ws{font-size:12.5px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:99px;padding:5px 12px;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board-actions{display:flex;gap:14px;margin:22px 0 34px}
+.launch{flex:1;text-align:left;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:14px;box-shadow:0 3px 14px rgba(15,23,42,.05);transition:.15s}
+.launch:hover{border-color:#C9D7EA;transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.09)}
+.launch[disabled]{opacity:.55;cursor:not-allowed;transform:none}
+.launch .mk{width:44px;height:44px;border-radius:12px;background:var(--blue-tint);color:var(--blue);font-size:19px;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;flex:none}
+.launch b{display:block;font-size:15px;font-weight:700;color:var(--ink)}
+.launch span{display:block;font-size:12.5px;color:var(--muted)}
+.board h3{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--faint);text-transform:uppercase;margin:26px 0 12px}
+.sess-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.sess-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sess-card:hover{border-color:var(--blue);box-shadow:0 4px 14px rgba(37,99,235,.12)}
+.sess-card b{display:block;font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sess-card span{font-size:11.5px;color:var(--faint)}
+.sess-card .cur{font-size:10.5px;font-weight:700;color:var(--blue);background:var(--blue-tint);border-radius:99px;padding:2px 9px;flex:none}
+.board-empty{font-size:13px;color:var(--faint);background:#fff;border:1px dashed #C9D7EA;border-radius:12px;padding:18px;text-align:center}
+/* ===== 浮动窗口 ===== */
+.win{position:fixed;display:none;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 48px rgba(15,23,42,.22);overflow:hidden}
+.win.open{display:flex}
+.win-title{height:40px;flex:none;background:#F8FAFC;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 12px;cursor:grab;user-select:none;font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.win-title:active{cursor:grabbing}
+.win-title .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:none}
+.win-title .sp{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;color:var(--faint);font-size:11.5px}
+.win-x{background:none;border:none;font-size:16px;line-height:1;color:var(--faint);cursor:pointer;padding:2px 6px;font-family:inherit;flex:none}
+.win-x:hover{color:var(--red)}
+.win-body{flex:1;min-height:0;position:relative;background:#fff}
+#term{position:absolute;inset:0}
+#graph-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
+.win-resize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;z-index:6;background:linear-gradient(135deg,transparent 55%,#C9D7EA 55%);border-bottom-right-radius:12px}
+.win-resize:hover{background:linear-gradient(135deg,transparent 55%,var(--blue) 55%)}
+/* ===== 底栏 dock ===== */
+#dock{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:6px;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:99px;padding:6px;box-shadow:0 10px 30px rgba(15,23,42,.16);z-index:600}
+.dock-btn{display:flex;align-items:center;gap:8px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-2);padding:8px 16px;border-radius:99px;cursor:pointer}
+.dock-btn:hover{background:var(--bg)}
+.dock-btn.active{background:var(--blue-tint);color:var(--blue-dark)}
+.dock-btn i{width:8px;height:8px;border-radius:50%;background:var(--faint);display:inline-block;flex:none}
+.dock-btn.active i{background:var(--blue)}
 /* ===== 登录页（白色卡片） ===== */
 .login{display:flex;justify-content:center;align-items:center;height:100vh}
 .lb{background:#fff;border:1px solid var(--line);border-radius:16px;padding:40px 36px;width:360px;box-shadow:0 12px 32px rgba(15,23,42,.08)}
@@ -77,7 +108,7 @@ color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:ant
 {% if not token %}
 <div class="login">
 <div class="lb">
-<h2><span class="logo-mark">❯</span> Web Terminal</h2>
+<h2><span class="logo-mark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="2.5" width="12.5" height="9.5" rx="2" stroke="#fff" stroke-width="1.7"/><circle cx="13" cy="6.3" r="1.1" fill="#fff"/><circle cx="18" cy="8.8" r="1.1" fill="#fff"/><path d="M14 6.8 l3.1 1.6" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/><rect x="2.5" y="11" width="12.5" height="9.5" rx="2" stroke="#fff" stroke-width="1.7"/><path d="M5.5 14.5 l2.5 2.1 -2.5 2.1" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.8 18.7 h3" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span> ChatDeck</h2>
 {% if err %}<p class="err">{{ err }}</p>{% endif %}
 <form method="post">
 <input type="text" name="u" placeholder="Username" required autofocus>
@@ -87,15 +118,34 @@ color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:ant
 </div>
 </div>
 {% else %}
+<div id="desktop">
 <div class="header">
-<div class="logo"><span class="logo-mark">❯</span> Terminal<small>· {{ user }}</small></div>
+<div class="logo"><span class="logo-mark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="2.5" width="12.5" height="9.5" rx="2" stroke="#fff" stroke-width="1.7"/><circle cx="13" cy="6.3" r="1.1" fill="#fff"/><circle cx="18" cy="8.8" r="1.1" fill="#fff"/><path d="M14 6.8 l3.1 1.6" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/><rect x="2.5" y="11" width="12.5" height="9.5" rx="2" stroke="#fff" stroke-width="1.7"/><path d="M5.5 14.5 l2.5 2.1 -2.5 2.1" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.8 18.7 h3" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span> ChatDeck<small>· {{ user }}</small></div>
 <div class="btn-group">
 <input type="file" id="upload-input" hidden onchange="doUpload()">
 <button onclick="showUploadModal()">上传</button>
 <button onclick="showDownloadModal()">下载</button>
 <button onclick="showHelpModal()">帮助</button>
-<button id="chat-btn" onclick="toggleGraph()" hidden>会话导图</button>
-<button onclick="location.href='/logout?t={{ token }}'">退出</button>
+{% if auth_on %}<button onclick="location.href='/logout?t={{ token }}'">退出</button>{% endif %}
+</div>
+</div>
+<div class="board">
+  <div class="board-hero">
+    <h2>ChatDeck</h2>
+    <span class="ws" id="ws-chip" title="工作目录">{{ cwd }}</span>
+  </div>
+  <div class="board-actions">
+    <button class="launch" id="launch-term" onclick="openWindow('win-term')">
+      <span class="mk">❯_</span>
+      <span style="flex:1;min-width:0"><b>打开终端</b><span>浏览器里的真实终端（PTY），支持 vim / top 等交互式程序</span></span>
+    </button>
+    <button class="launch" id="launch-graph" onclick="openGraph()" disabled>
+      <span class="mk">✦</span>
+      <span style="flex:1;min-width:0"><b>打开会话导图</b><span id="launch-graph-sub">AI 会话实时导图（等待解析数据就绪）</span></span>
+    </button>
+  </div>
+  <h3>会话</h3>
+  <div class="sess-grid" id="sess-grid"><div class="board-empty">暂无解析数据：在终端里用 Codely / Codex / Claude 聊一轮即自动生成</div></div>
 </div>
 </div>
 <div id="upload-modal">
@@ -186,10 +236,19 @@ color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:ant
 <button class="close-btn" onclick="hideHelpModal()">关闭</button>
 </div>
 </div>
-<div id="main">
-<div id="term"></div>
-<div id="splitter" title="拖动调整导图面板宽度"></div>
-<div id="graph-panel"><iframe id="graph-frame" title="会话导图"></iframe></div>
+<div class="win" id="win-term">
+<div class="win-title" data-win="win-term"><span class="dot"></span>终端<span class="sp" id="term-path"></span><button class="win-x" onclick="closeWindow('win-term')" title="关闭">×</button></div>
+<div class="win-body"><div id="term"></div></div>
+<div class="win-resize" data-win="win-term"></div>
+</div>
+<div class="win" id="win-graph">
+<div class="win-title" data-win="win-graph"><span class="dot" style="background:#8B5CF6"></span>会话导图<span class="sp" id="graph-sub"></span><button class="win-x" onclick="closeWindow('win-graph')" title="关闭">×</button></div>
+<div class="win-body"><iframe id="graph-frame" title="会话导图"></iframe></div>
+<div class="win-resize" data-win="win-graph"></div>
+</div>
+<div id="dock">
+<button class="dock-btn" id="dock-term" onclick="toggleWindow('win-term')"><i></i>❯ 终端</button>
+<button class="dock-btn" id="dock-graph" onclick="openGraph()"><i></i>✦ 会话导图</button>
 </div>
 <script src="/socket.io.min.js"></script>
 <script src="/xterm.min.js"></script>
@@ -206,7 +265,6 @@ brightBlack:'#475569',brightRed:'#B91C1C',brightGreen:'#15803D',brightYellow:'#B
 var fitAddon=new FitAddon.FitAddon();
 term.loadAddon(fitAddon);
 term.open(document.getElementById('term'));
-fitAddon.fit();
 term.onData(function(d){sk.emit('in',d)});
 term.onResize(function(){sk.emit('resize',{rows:term.rows,cols:term.cols})});
 sk.on('connect',function(){sk.emit('auth',token)});
@@ -214,7 +272,8 @@ sk.on('ready',function(){sk.emit('resize',{rows:term.rows,cols:term.cols})});
 sk.on('out',function(d){term.write(d)});
 sk.on('err',function(m){term.write('\r\nError: '+m+'\r\n')});
 sk.on('dis',function(){term.write('\r\nDisconnected\r\n')});
-sk.on('cwd',function(d){cwd=d});
+sk.on('cwd',function(d){cwd=d;document.getElementById('ws-chip').textContent=cwd;document.getElementById('term-path').textContent=cwd});
+document.getElementById('term-path').textContent=cwd;
 function showUploadModal(){document.getElementById('upload-modal').style.display='block';document.getElementById('upload-path').value=cwd+'/';document.getElementById('upload-path').focus()}
 function hideUploadModal(){document.getElementById('upload-modal').style.display='none'}
 function selectFile(){hideUploadModal();document.getElementById('upload-input').click()}
@@ -245,52 +304,164 @@ a.href='/download?token='+token+'&path='+encodeURIComponent(p);
 a.download=p.split('/').pop();
 a.click();
 }
-/* ===== 会话导图开关 ===== */
-var graphOpen=false;
-var splitter=document.getElementById('splitter');
-var graphPanel=document.getElementById('graph-panel');
-function toggleGraph(){
-graphOpen=!graphOpen;
-graphPanel.classList.toggle('open',graphOpen);
-splitter.classList.toggle('open',graphOpen);
-document.getElementById('chat-btn').classList.toggle('active',graphOpen);
-if(graphOpen&&!document.getElementById('graph-frame').src){
-document.getElementById('graph-frame').src='/viewer?embed=1'; /* 内嵌模式：侧栏抽屉化，节点详情/会话按需唤出 */
+/* ================= 浮动窗口系统（可拖动 / 拖角缩放 / 点击置顶 / 几何记忆） ================= */
+var ZTOP=30;
+var winTerm=document.getElementById('win-term');
+var winGraph=document.getElementById('win-graph');
+var graphFrame=document.getElementById('graph-frame');
+function focusWin(w){
+if(ZTOP>=550){winTerm.style.zIndex=30;winGraph.style.zIndex=31;ZTOP=31}
+w.style.zIndex=++ZTOP;
 }
-fitAddon.fit(); /* 面板开合后同步终端列数到 PTY */
+function clampWin(g){
+g.w=Math.max(340,Math.min(g.w,window.innerWidth-16));
+g.h=Math.max(260,Math.min(g.h,window.innerHeight-70));
+g.x=Math.max(8-g.w+120,Math.min(g.x,window.innerWidth-60));
+g.y=Math.max(0,Math.min(g.y,window.innerHeight-48));
+return g;
 }
-/* ===== 面板宽度拖拽（左右拉动，宽度记忆） ===== */
-function setPanelWidth(w){
-w=Math.max(320,Math.min(w,window.innerWidth-246)); /* 右侧留出终端最小宽 */
-graphPanel.style.width=w+'px';
+function applyGeom(id,g){
+var w=document.getElementById(id);
+w.style.left=g.x+'px';w.style.top=g.y+'px';w.style.width=g.w+'px';w.style.height=g.h+'px';
 }
-(function(){var s=parseInt(localStorage.getItem('graph-panel-w')||'0',10);if(s>=320)setPanelWidth(s)})();
-var dragInfo=null;
-splitter.addEventListener('pointerdown',function(e){
+function defGeom(id){
+if(id==='win-term')return{x:24,y:76,w:Math.round(window.innerWidth*.58),h:Math.round(window.innerHeight*.64)};
+return{x:Math.round(window.innerWidth*.62),y:96,w:Math.round(window.innerWidth*.34),h:Math.round(window.innerHeight*.66)};
+}
+function loadGeom(id){
+try{var g=JSON.parse(localStorage.getItem('dockwin-'+id)||'null');if(g&&g.w)return clampWin(g)}catch(e){}
+return clampWin(defGeom(id));
+}
+function saveGeom(id){
+var w=document.getElementById(id);
+saveGeomRaw(id,{x:w.offsetLeft,y:w.offsetTop,w:w.offsetWidth,h:w.offsetHeight});
+}
+function saveGeomRaw(id,g){try{localStorage.setItem('dockwin-'+id,JSON.stringify(g))}catch(e){}}
+applyGeom('win-term',loadGeom('win-term'));
+applyGeom('win-graph',loadGeom('win-graph'));
+function isOpen(id){return document.getElementById(id).classList.contains('open')}
+function fitIfOpen(){if(isOpen('win-term'))fitAddon.fit()}
+function openWindow(id){
+var w=document.getElementById(id);
+if(!isOpen(id)){
+w.classList.add('open');
+if(id==='win-graph'&&!graphFrame.src){graphFrame.src='/viewer?embed=1'}
+}
+focusWin(w);
+if(id==='win-term'){setTimeout(function(){fitIfOpen();term.focus()},20)}
+syncDock();
+}
+function closeWindow(id){document.getElementById(id).classList.remove('open');syncDock()}
+function toggleWindow(id){if(isOpen(id)&&document.getElementById(id).style.zIndex==ZTOP){closeWindow(id)}else{openWindow(id)}}
+function syncDock(){
+document.getElementById('dock-term').classList.toggle('active',isOpen('win-term'));
+document.getElementById('dock-graph').classList.toggle('active',isOpen('win-graph'));
+}
+/* 标题栏拖动（pointer capture：经过 iframe 不丢事件） */
+document.querySelectorAll('.win-title').forEach(function(t){
+t.addEventListener('pointerdown',function(e){
+if(e.target.closest('.win-x'))return;
 e.preventDefault();
-splitter.setPointerCapture(e.pointerId); /* 捕获后经过 iframe 也能持续收到拖动事件 */
-splitter.classList.add('drag');
-dragInfo={x:e.clientX,w:graphPanel.getBoundingClientRect().width};
+var w=document.getElementById(t.dataset.win);
+focusWin(w);
+w.classList.add('dragging');
+graphFrame.style.pointerEvents='none';
+var sx=e.clientX,sy=e.clientY,ox=w.offsetLeft,oy=w.offsetTop;
+t.setPointerCapture(e.pointerId);
+function move(ev){
+var g=clampWin({x:ox+ev.clientX-sx,y:oy+ev.clientY-sy,w:w.offsetWidth,h:w.offsetHeight});
+w.style.left=g.x+'px';w.style.top=g.y+'px';
+}
+function up(){
+graphFrame.style.pointerEvents='';
+w.classList.remove('dragging');
+saveGeom(t.dataset.win);
+t.removeEventListener('pointermove',move);
+t.removeEventListener('pointerup',up);
+t.removeEventListener('pointercancel',up);
+}
+t.addEventListener('pointermove',move);
+t.addEventListener('pointerup',up);
+t.addEventListener('pointercancel',up); /* 中断的指针流不触发 pointerup：不接住则 iframe 永久失焦 */
 });
-splitter.addEventListener('pointermove',function(e){
-if(!dragInfo)return;
-setPanelWidth(dragInfo.w+(dragInfo.x-e.clientX)); /* 面板在右：向左拖变宽 */
-fitAddon.fit();
 });
-splitter.addEventListener('pointerup',function(){
-if(!dragInfo)return;
-dragInfo=null;
-splitter.classList.remove('drag');
-localStorage.setItem('graph-panel-w',String(Math.round(graphPanel.getBoundingClientRect().width)));
-fitAddon.fit();
+/* 右下角缩放 */
+document.querySelectorAll('.win-resize').forEach(function(h){
+h.addEventListener('pointerdown',function(e){
+e.preventDefault();
+var w=document.getElementById(h.dataset.win);
+focusWin(w);
+graphFrame.style.pointerEvents='none';
+var sx=e.clientX,sy=e.clientY,ow=w.offsetWidth,oh=w.offsetHeight;
+h.setPointerCapture(e.pointerId);
+function move(ev){
+var g=clampWin({x:w.offsetLeft,y:w.offsetTop,w:ow+ev.clientX-sx,h:oh+ev.clientY-sy});
+w.style.width=g.w+'px';w.style.height=g.h+'px';
+if(h.dataset.win==='win-term')fitIfOpen();
+}
+function up(){
+graphFrame.style.pointerEvents='';
+saveGeom(h.dataset.win);
+if(h.dataset.win==='win-term')fitIfOpen();
+h.removeEventListener('pointermove',move);
+h.removeEventListener('pointerup',up);
+h.removeEventListener('pointercancel',up);
+}
+h.addEventListener('pointermove',move);
+h.addEventListener('pointerup',up);
+h.addEventListener('pointercancel',up); /* 同上：中断流必须接住，否则 iframe 永久失焦 */
 });
+});
+/* 点窗口任意处置顶 */
+[winTerm,winGraph].forEach(function(w){w.addEventListener('pointerdown',function(){focusWin(w)})});
 window.addEventListener('resize',function(){
-if(graphOpen)setPanelWidth(graphPanel.getBoundingClientRect().width); /* 窗口变化后重新钳制 */
-fitAddon.fit();
+applyGeom('win-term',loadGeom('win-term'));
+applyGeom('win-graph',loadGeom('win-graph'));
+fitIfOpen();
 });
-fetch('/chatgraph/config').then(function(r){return r.status===401?null:r.json()}).then(function(c){
-if(c&&c.enabled)document.getElementById('chat-btn').hidden=false;
+/* ================= 工作台数据（复用导图数据路由） ================= */
+var graphEnabled=null;
+var boardSessions=[];
+var currentSid=null;
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function openGraph(sid){
+var url='/viewer?embed=1'+(sid?'&session='+encodeURIComponent(sid):'');
+if(!isOpen('win-graph')||graphFrame.src.indexOf(encodeURIComponent(sid))<0){graphFrame.src=url}
+openWindow('win-graph');
+if(sid){document.getElementById('graph-sub').textContent='已固定：'+String(sid).slice(0,24)}
+}
+function renderBoard(){
+var box=document.getElementById('sess-grid');
+if(!boardSessions.length){
+box.innerHTML='<div class="board-empty">暂无解析数据：在终端里用 Codely / Codex / Claude 聊一轮即自动生成</div>';
+return;
+}
+box.innerHTML=boardSessions.map(function(s){
+var t=(s.generatedAt||'').slice(11,16);
+var isCur=s.sessionId===currentSid;
+return '<div class="sess-card" data-sid="'+esc(s.sessionId)+'">'
++'<span style="min-width:0"><b>'+esc(s.goal||('会话 '+String(s.sessionId).slice(0,10)))+'</b>'
++'<span>v'+s.version+' · '+s.roundCount+' 轮 · '+esc(t)+'</span></span>'
++(isCur?'<span class="cur">最新</span>':'')
++'</div>';
+}).join('');
+box.querySelectorAll('.sess-card').forEach(function(el){
+el.addEventListener('click',function(){openGraph(el.getAttribute('data-sid'))});
+});
+}
+function refreshBoard(){
+fetch('/chatgraph/config').then(function(r){return r.json()}).then(function(c){
+graphEnabled=!!(c&&c.enabled);
+var btn=document.getElementById('launch-graph');
+btn.disabled=!graphEnabled;
+document.getElementById('launch-graph-sub').textContent=graphEnabled?'AI 会话实时导图（点击会话卡可固定查看）':'导图数据未配置（--chatgraph-work / --workspace）';
 }).catch(function(){});
+fetch('/current').then(function(r){return r.json()}).then(function(c){currentSid=(c&&c.sessionId)||null}).catch(function(){});
+fetch('/sessions').then(function(r){return r.json()}).then(function(d){boardSessions=(d||[]).slice(0,9);renderBoard()}).catch(function(){});
+}
+refreshBoard();
+setInterval(refreshBoard,10000);
+syncDock();
 </script>
 {% endif %}
 </body>

@@ -294,6 +294,8 @@ def _chat_file(path, fallback_body, err):
 
 
 def _list_sessions():
+    if not CHATGRAPHIC_WORK:
+        return []  # 未检测到导图数据（如独立部署）：会话列表为空，不报错
     out = []
     root = os.path.join(CHATGRAPHIC_WORK, 'sessions')
     try:

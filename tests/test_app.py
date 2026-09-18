@@ -78,10 +78,12 @@ class TestNoAuth:
         assert rv.status_code == 200
         assert 'id="desktop"' in rv.data.decode()
 
-    def test_graph_routes_open_without_cookie(self, client):
-        """免登录下数据路由无 cookie 也放行"""
+    def test_graph_routes_open_without_cookie(self, client, monkeypatch):
+        """免登录下数据路由无 cookie 也放行；work 未配置时 /sessions 返回空列表不 500"""
+        monkeypatch.setattr(app_module, 'CHATGRAPHIC_WORK', None)
         rv = client.get('/sessions')
         assert rv.status_code == 200
+        assert rv.get_json() == []
 
 
 class TestLogin:

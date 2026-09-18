@@ -443,7 +443,7 @@ if __name__ == '__main__':
             if not ifs.startswith('127.'): ip = ifs; break
     except: pass
     print('='*50)
-    print('Web Terminal')
+    print('ChatDeck')
     print('='*50)
     print(f'Local:   http://localhost:{args.port}')
     print(f'Network: http://{ip}:{args.port}')

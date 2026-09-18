@@ -61,7 +61,7 @@ class TestLogin:
         """测试登录页面可访问"""
         rv = client.get('/')
         assert rv.status_code == 200
-        assert 'Web Terminal' in rv.data.decode()
+        assert 'ChatDeck' in rv.data.decode()
 
     def test_login_success(self, client):
         """测试登录成功"""

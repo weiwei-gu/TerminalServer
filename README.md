@@ -9,7 +9,7 @@
 - 用户登录认证
 - 多用户会话管理
 - 文件上传下载
-- 工作台 + 浮动窗口（ChatGraphic 集成）：登录后进入工作台仪表盘，终端与会话导图为可拖动、可缩放的独立窗口，导图随对话实时生长
+- ChatDeck 工作台（ChatGraphic 集成）：登录后进入 AI 协作台仪表盘，终端与会话导图为可拖动、可缩放的独立浮动窗口，导图随对话实时生长
 
 ## 原理
 
@@ -115,7 +115,7 @@ python app.py
 
 ## 会话导图（ChatGraphic 集成）
 
-与 [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic) 组合使用：登录后进入**工作台**（背景页——会话列表、导图就绪状态、终端与导图的唤出卡），终端与会话导图为**独立浮动窗口**：标题栏拖动、右下角拖角缩放、点击置顶、可关闭后从底部 dock 唤回，窗口几何按浏览器记忆。导图窗内嵌 viewer 的 embed 模式（会话抽屉默认展开、点节点弹详情）；点工作台会话卡可**固定查看指定会话**（`?session=` 直达）。在终端窗里用 Codely / Codex CLI / Claude Code 聊天（需已注册 ChatGraphic Hook），每轮结束后导图自动更新——**无需另跑 `serve.js`**，本服务直接读取磁盘上的数据目录。
+与 [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic) 组合使用：登录后进入 **ChatDeck** 工作台（AI 协作台，背景页——会话列表、导图就绪状态、终端与导图的唤出卡），终端与会话导图为**独立浮动窗口**：标题栏拖动、右下角拖角缩放、点击置顶、可关闭后从底部 dock 唤回，窗口几何按浏览器记忆。导图窗内嵌 viewer 的 embed 模式（会话抽屉默认展开、点节点弹详情）；点工作台会话卡可**固定查看指定会话**（`?session=` 直达）。在终端窗里用 Codely / Codex CLI / Claude Code 聊天（需已注册 ChatGraphic Hook），每轮结束后导图自动更新——**无需另跑 `serve.js`**，本服务直接读取磁盘上的数据目录。
 
 ### 数据目录解析
 

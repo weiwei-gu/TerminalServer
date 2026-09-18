@@ -9,7 +9,7 @@ Web-based terminal service - Access a real terminal from your browser.
 - User authentication
 - Multi-user session management
 - File upload and download
-- Chat map (ChatGraphic integration): dashboard + floating windows — terminal and map are independently draggable and resizable, growing live with the conversation
+- ChatDeck workspace (ChatGraphic integration): after login you land on the AI collaboration dashboard; terminal and chat map are independently draggable, resizable floating windows, growing live with the conversation
 
 ## Architecture
 
@@ -115,7 +115,7 @@ Example: `/tmp/test.txt`
 
 ## Chat Map (ChatGraphic Integration)
 
-Use together with [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic): after login you land on a **workspace dashboard** (the background page — session list, map readiness, launch cards for terminal and map). The terminal and the chat map are **independent floating windows**: drag by the title bar, resize from the bottom-right corner, click to focus, close and recall from the bottom dock; window geometry is remembered per browser. The map window embeds the viewer in embed mode (sessions drawer open by default, click a node for details); clicking a session card on the dashboard **pins that session** in the map window (`?session=` deep link). Chat with Codely / Codex CLI / Claude Code inside the terminal window (with ChatGraphic hooks registered) and the map updates automatically after each turn — **no need to run `serve.js` separately**, this service reads the data directory on disk directly.
+Use together with [ChatGraphic](https://github.com/weiwei-gu/ChatGraphic): after login you land on the **ChatDeck** workspace (AI collaboration dashboard — the background page: session list, map readiness, launch cards for terminal and map). The terminal and the chat map are **independent floating windows**: drag by the title bar, resize from the bottom-right corner, click to focus, close and recall from the bottom dock; window geometry is remembered per browser. The map window embeds the viewer in embed mode (sessions drawer open by default, click a node for details); clicking a session card on the dashboard **pins that session** in the map window (`?session=` deep link). Chat with Codely / Codex CLI / Claude Code inside the terminal window (with ChatGraphic hooks registered) and the map updates automatically after each turn — **no need to run `serve.js` separately**, this service reads the data directory on disk directly.
 
 ### Data Directory Resolution
 

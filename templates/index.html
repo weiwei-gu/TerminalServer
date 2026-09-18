@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Web Terminal</title>
+<title>ChatDeck</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%233B82F6'/%3E%3Crect x='9' y='3' width='12' height='9.5' rx='2' stroke='white' stroke-width='1.6' fill='none'/%3E%3Ccircle cx='12.5' cy='6.5' r='1' fill='white'/%3E%3Ccircle cx='17.5' cy='9' r='1' fill='white'/%3E%3Cpath d='M13.4 7 l3 1.6' stroke='white' stroke-width='1' stroke-linecap='round'/%3E%3Crect x='3' y='11' width='12' height='9.5' rx='2' stroke='white' stroke-width='1.6' fill='none'/%3E%3Cpath d='M6 14.5 l2.4 2 -2.4 2' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Cpath d='M10 18.5 h2.6' stroke='white' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/xterm.css">
 <style>
 /* 对齐 ChatGraphic viewer 设计语言：浅色、蓝主色、毛玻璃 */
@@ -107,7 +108,7 @@ color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:ant
 {% if not token %}
 <div class="login">
 <div class="lb">
-<h2><span class="logo-mark">❯</span> Web Terminal</h2>
+<h2><span class="logo-mark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="2.5" width="12.5" height="9.5" rx="2" stroke="#fff" stroke-width="1.7"/><circle cx="13" cy="6.3" r="1.1" fill="#fff"/><circle cx="18" cy="8.8" r="1.1" fill="#fff"/><path d="M14 6.8 l3.1 1.6" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/><rect x="2.5" y="11" width="12.5" height="9.5" rx="2" stroke="#fff" stroke-width="1.7"/><path d="M5.5 14.5 l2.5 2.1 -2.5 2.1" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.8 18.7 h3" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span> ChatDeck</h2>
 {% if err %}<p class="err">{{ err }}</p>{% endif %}
 <form method="post">
 <input type="text" name="u" placeholder="Username" required autofocus>
@@ -119,7 +120,7 @@ color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:ant
 {% else %}
 <div id="desktop">
 <div class="header">
-<div class="logo"><span class="logo-mark">❯</span> Terminal 工作台<small>· {{ user }}</small></div>
+<div class="logo"><span class="logo-mark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="2.5" width="12.5" height="9.5" rx="2" stroke="#fff" stroke-width="1.7"/><circle cx="13" cy="6.3" r="1.1" fill="#fff"/><circle cx="18" cy="8.8" r="1.1" fill="#fff"/><path d="M14 6.8 l3.1 1.6" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/><rect x="2.5" y="11" width="12.5" height="9.5" rx="2" stroke="#fff" stroke-width="1.7"/><path d="M5.5 14.5 l2.5 2.1 -2.5 2.1" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.8 18.7 h3" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span> ChatDeck<small>· {{ user }}</small></div>
 <div class="btn-group">
 <input type="file" id="upload-input" hidden onchange="doUpload()">
 <button onclick="showUploadModal()">上传</button>
@@ -130,7 +131,7 @@ color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:ant
 </div>
 <div class="board">
   <div class="board-hero">
-    <h2>工作台</h2>
+    <h2>ChatDeck</h2>
     <span class="ws" id="ws-chip" title="工作目录">{{ cwd }}</span>
   </div>
   <div class="board-actions">

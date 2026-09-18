@@ -54,28 +54,60 @@ def logged_in(client):
     return client
 
 
-class TestLogin:
-    """登录功能测试"""
+@pytest.fixture
+def auth_on(monkeypatch):
+    """临时启用账号登录（默认免登录）"""
+    monkeypatch.setattr(app_module, 'AUTH_ENABLED', True)
 
-    def test_login_page(self, client):
+
+class TestNoAuth:
+    """默认免登录测试"""
+
+    def test_direct_entry(self, client):
+        """打开即进工作台，自动签发会话 cookie"""
+        rv = client.get('/')
+        assert rv.status_code == 200
+        html = rv.data.decode()
+        assert 'id="desktop"' in html, '免登录应直接渲染工作台而非登录页'
+        assert 'ChatDeck' in html
+        assert any(c.startswith('wt=') for c in rv.headers.getlist('Set-Cookie'))
+
+    def test_post_also_direct(self, client):
+        """POST（登录表单提交）同样直接进入工作台"""
+        rv = client.post('/', data={'u': 'whatever', 'p': 'nope'})
+        assert rv.status_code == 200
+        assert 'id="desktop"' in rv.data.decode()
+
+    def test_graph_routes_open_without_cookie(self, client):
+        """免登录下数据路由无 cookie 也放行"""
+        rv = client.get('/sessions')
+        assert rv.status_code == 200
+
+
+class TestLogin:
+    """账号登录测试（--auth 模式）"""
+
+    def test_login_page(self, client, auth_on):
         """测试登录页面可访问"""
         rv = client.get('/')
         assert rv.status_code == 200
-        assert 'ChatDeck' in rv.data.decode()
+        html = rv.data.decode()
+        assert 'ChatDeck' in html
+        assert 'name="u"' in html, '应显示登录表单'
 
-    def test_login_success(self, client):
+    def test_login_success(self, client, auth_on):
         """测试登录成功"""
         rv = client.post('/', data={'u': 'admin', 'p': 'admin123'}, follow_redirects=True)
         assert rv.status_code == 200
         assert '<small>· admin</small>' in rv.data.decode()
 
-    def test_login_fail_wrong_password(self, client):
+    def test_login_fail_wrong_password(self, client, auth_on):
         """测试密码错误"""
         rv = client.post('/', data={'u': 'admin', 'p': 'wrong'}, follow_redirects=True)
         assert rv.status_code == 200
         assert 'Invalid' in rv.data.decode()
 
-    def test_login_fail_unknown_user(self, client):
+    def test_login_fail_unknown_user(self, client, auth_on):
         """测试未知用户"""
         rv = client.post('/', data={'u': 'unknown', 'p': 'password'}, follow_redirects=True)
         assert rv.status_code == 200
@@ -203,16 +235,16 @@ class TestCLI:
 class TestChatGraphAuth:
     """会话导图路由鉴权测试"""
 
-    def test_routes_require_cookie(self, client, chat_env):
-        """测试未登录访问导图路由全部 401"""
+    def test_routes_require_cookie(self, client, chat_env, auth_on):
+        """测试（--auth 模式）未登录访问导图路由全部 401"""
         for url in ('/chatgraph/config', '/viewer', '/sessions', '/current',
                     '/session/test-session-1/graph.json', '/session/test-session-1/version'):
             rv = client.get(url)
             assert rv.status_code == 401, url
             assert '未授权' in rv.get_json()['error']
 
-    def test_login_sets_cookie(self, client):
-        """测试登录成功种下 wt cookie（HttpOnly）"""
+    def test_login_sets_cookie(self, client, auth_on):
+        """测试（--auth 模式）登录成功种下 wt cookie（HttpOnly）"""
         rv = client.post('/', data={'u': 'admin', 'p': 'admin123'})
         assert rv.status_code == 200
         cookies = rv.headers.getlist('Set-Cookie')

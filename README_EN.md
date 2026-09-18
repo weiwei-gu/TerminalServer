@@ -80,12 +80,17 @@ After starting, access at:
 - Local: `http://localhost:<port>`
 - Network: `http://<your-ip>:<port>`
 
-Default accounts:
+## Auth & Security
+
+- **No login by default**: opening the URL lands you directly on the ChatDeck workspace (a local session is issued automatically)
+- `--auth` enables account login, default accounts:
 
 | Username | Password |
 |----------|----------|
 | admin | admin123 |
 | user | password |
+
+> **Security note**: the server binds `0.0.0.0` (LAN reachable). **With no-login mode, any device on the network can obtain a terminal on this machine** — use only on trusted networks; enable `--auth` or restrict exposure via firewall / tunnel when the network is not trusted.
 
 ## File Upload and Download
 

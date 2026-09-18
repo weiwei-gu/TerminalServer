@@ -126,7 +126,7 @@ color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:ant
 <button onclick="showUploadModal()">上传</button>
 <button onclick="showDownloadModal()">下载</button>
 <button onclick="showHelpModal()">帮助</button>
-<button onclick="location.href='/logout?t={{ token }}'">退出</button>
+{% if auth_on %}<button onclick="location.href='/logout?t={{ token }}'">退出</button>{% endif %}
 </div>
 </div>
 <div class="board">

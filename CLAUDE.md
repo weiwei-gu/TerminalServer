@@ -34,7 +34,7 @@ Python venv 环境：
 浏览器 <--WebSocket--> Flask-SocketIO <--PTY--> Shell进程
 ```
 
-- 认证：简单 token 机制
+- 认证：默认免登录（自动签发本地会话）；`--auth` 启用简单 token 登录
 - 通信：Socket.IO 双向传输终端 I/O
 - PTY：使用 Python pty 模块创建伪终端
 - 会话导图：Flask 直接读磁盘上的 ChatGraphic work 目录（默认 `../chatgraphic/work`，`--chatgraph-work` / `CHATGRAPHIC_WORK` / `CHATGRAPHIC_HOME` 可覆盖），`/viewer` + `/sessions` 等只读路由凭登录 cookie 鉴权；终端页「会话导图」开关经 iframe 展开面板，FitAddon 随面板开合与分隔条拖动同步终端尺寸；界面为 viewer 同款浅色设计语言

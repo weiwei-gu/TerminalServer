@@ -378,9 +378,11 @@ w.classList.remove('dragging');
 saveGeom(t.dataset.win);
 t.removeEventListener('pointermove',move);
 t.removeEventListener('pointerup',up);
+t.removeEventListener('pointercancel',up);
 }
 t.addEventListener('pointermove',move);
 t.addEventListener('pointerup',up);
+t.addEventListener('pointercancel',up); /* 中断的指针流不触发 pointerup：不接住则 iframe 永久失焦 */
 });
 });
 /* 右下角缩放 */
@@ -403,9 +405,11 @@ saveGeom(h.dataset.win);
 if(h.dataset.win==='win-term')fitIfOpen();
 h.removeEventListener('pointermove',move);
 h.removeEventListener('pointerup',up);
+h.removeEventListener('pointercancel',up);
 }
 h.addEventListener('pointermove',move);
 h.addEventListener('pointerup',up);
+h.addEventListener('pointercancel',up); /* 同上：中断流必须接住，否则 iframe 永久失焦 */
 });
 });
 /* 点窗口任意处置顶 */
